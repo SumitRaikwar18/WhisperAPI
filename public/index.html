@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WhisperAPI</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="topbar">
+        <a class="brand" href="#hero">
+          <span class="brand-mark">W</span>
+          <span class="brand-copy">
+            <strong>WhisperAPI</strong>
+            <span>Private x402 payments on Solana</span>
+          </span>
+        </a>
+
+        <nav class="topnav" aria-label="Primary">
+          <a href="#proof">Why now</a>
+          <a href="#architecture">Architecture</a>
+          <a href="#demo">Demo</a>
+          <a href="#devnet">Devnet</a>
+        </nav>
+      </header>
+
+      <main>
+        <section class="hero" id="hero">
+          <div class="hero-copy">
+            <div class="eyebrow">MagicBlock x x402 x Solana</div>
+            <h1>The private payment rail for the metered agent economy.</h1>
+            <p class="hero-lede">
+              WhisperAPI lets agents pay for APIs, quotes, and merchant services without
+              exposing spend, provider choice, or usage cadence on public rails.
+            </p>
+
+            <div class="hero-actions">
+              <a class="button button-primary" href="#demo">Run the live demo</a>
+              <a class="button button-secondary" href="/api/integration/status">Check integration JSON</a>
+            </div>
+
+            <div class="stat-row" aria-label="Key product facts">
+              <article class="stat-card">
+                <span class="stat-label">Payment path</span>
+                <strong>x402-compatible 402 -> private settle -> receipt retry</strong>
+              </article>
+              <article class="stat-card">
+                <span class="stat-label">Privacy surface</span>
+                <strong>Provider, amount, and frequency concealed inside PER</strong>
+              </article>
+              <article class="stat-card">
+                <span class="stat-label">Live mode</span>
+                <strong>MagicBlock transaction builders + Solana signing</strong>
+              </article>
+            </div>
+          </div>
+
+          <aside class="hero-panel">
+            <div class="panel panel-contrast">
+              <div class="panel-header compact">
+                <h2>What leaks today</h2>
+                <p>Public x402 payment rails leak business intelligence by default.</p>
+              </div>
+
+              <div class="signal-list">
+                <div class="signal-item public">API provider can be inferred from payment route</div>
+                <div class="signal-item public">Per-call amount becomes visible</div>
+                <div class="signal-item public">Call frequency becomes easy to index</div>
+                <div class="signal-item private">WhisperAPI moves payment execution into PER</div>
+              </div>
+            </div>
+          </aside>
+        </section>
+
+        <section class="section" id="proof">
+          <div class="section-heading">
+            <div class="eyebrow">Why now</div>
+            <h2>AI agents need private machine payments, not public exhaust.</h2>
+            <p>
+              The product is simple to explain: x402 is the commercial handshake, MagicBlock PER is
+              the private execution layer, and WhisperAPI turns them into a merchant-safe checkout
+              path for agents.
+            </p>
+          </div>
+
+          <div class="proof-grid">
+            <article class="proof-card">
+              <span class="proof-kicker">Agent commerce</span>
+              <h3>Paid APIs are the first recurring spend category for autonomous software.</h3>
+              <p>Inference, search, maps, travel quotes, and merchant APIs all become pay-per-use infrastructure.</p>
+            </article>
+            <article class="proof-card">
+              <span class="proof-kicker">MagicBlock fit</span>
+              <h3>PER is purpose-built for private state and compliant execution on Solana.</h3>
+              <p>WhisperAPI uses the Private Payments API directly instead of wrapping privacy around the edges.</p>
+            </article>
+            <article class="proof-card">
+              <span class="proof-kicker">Hackathon shape</span>
+              <h3>The demo is legible in under one minute.</h3>
+              <p>Judges can compare public leakage against the private flow side by side without needing protocol context first.</p>
+            </article>
+          </div>
+        </section>
+
+        <section class="section" id="architecture">
+          <div class="section-heading">
+            <div class="eyebrow">Architecture</div>
+            <h2>A clean four-step payment path.</h2>
+            <p>One flow for the buyer agent, one settlement destination for the provider, and one observer panel for judges.</p>
+          </div>
+
+          <div class="architecture-grid">
+            <article class="arch-card">
+              <span class="arch-step">01</span>
+              <h3>Agent hits a paid endpoint</h3>
+              <p>The API returns `402 Payment Required` with the payment spec and retry contract.</p>
+            </article>
+            <article class="arch-card">
+              <span class="arch-step">02</span>
+              <h3>WhisperAPI opens a private payment session</h3>
+              <p>The app builds a MagicBlock deposit transaction and moves the buyer balance into PER.</p>
+            </article>
+            <article class="arch-card">
+              <span class="arch-step">03</span>
+              <h3>Private transfer settles inside PER</h3>
+              <p>The provider destination receives the private payment without exposing the per-call route on public rails.</p>
+            </article>
+            <article class="arch-card">
+              <span class="arch-step">04</span>
+              <h3>Receipt retries the original request</h3>
+              <p>The API returns the product response, while observers only see what the selected settlement mode reveals.</p>
+            </article>
+          </div>
+        </section>
+
+        <section class="section section-demo" id="demo">
+          <div class="section-heading">
+            <div class="eyebrow">Interactive demo</div>
+            <h2>Run the public path and the private path from one screen.</h2>
+            <p>Use the controls, watch the ledger panels update, then inspect the live integration status.</p>
+          </div>
+
+          <div class="workspace-grid">
+            <section class="panel controls">
+              <div class="panel-header">
+                <h2>Demo controls</h2>
+                <p>Select an endpoint and compare both payment modes.</p>
+              </div>
+
+              <label class="field" for="endpoint-select">
+                <span>Paid endpoint</span>
+                <select id="endpoint-select" aria-label="Paid endpoint"></select>
+              </label>
+
+              <div class="actions">
+                <button id="public-run" class="button button-secondary" type="button">
+                  Run public flow
+                </button>
+                <button id="private-run" class="button button-primary" type="button">
+                  Run private flow
+                </button>
+                <button id="reset-run" class="button button-ghost" type="button">
+                  Reset demo
+                </button>
+              </div>
+
+              <div class="legend">
+                <div><span class="dot public"></span>Readable public payment trail</div>
+                <div><span class="dot private"></span>Private session and batched settlement</div>
+              </div>
+            </section>
+
+            <section class="panel output">
+              <div class="panel-header">
+                <h2>Latest flow result</h2>
+                <p>Inspect the response, receipt, and payment step outputs.</p>
+              </div>
+              <pre id="latest-result" class="code-block">No flow run yet.</pre>
+            </section>
+          </div>
+
+          <div class="compare-grid">
+            <section class="panel">
+              <div class="panel-header">
+                <h2>Public chain view</h2>
+                <p>What an external observer can reconstruct.</p>
+              </div>
+              <div id="public-ledger" class="timeline empty">No public events yet.</div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-header">
+                <h2>Private session view</h2>
+                <p>What happens inside the private checkout path.</p>
+              </div>
+              <div id="private-ledger" class="timeline empty">No private events yet.</div>
+            </section>
+          </div>
+
+          <div class="ops-grid">
+            <section class="panel">
+              <div class="panel-header">
+                <h2>Integration status</h2>
+                <p>Current adapter mode, env readiness, and MagicBlock health.</p>
+              </div>
+              <pre id="integration-status" class="code-block">Loading integration status...</pre>
+            </section>
+
+            <section class="panel">
+              <div class="panel-header">
+                <h2>Provider settlements</h2>
+                <p>How merchant settlement differs between public and private flows.</p>
+              </div>
+              <div id="settlements" class="timeline empty">No settlements yet.</div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-header">
+                <h2>Receipts and sessions</h2>
+                <p>Single-use receipts and PER session metadata generated by the app.</p>
+              </div>
+              <div id="receipts" class="timeline empty">No receipts yet.</div>
+            </section>
+          </div>
+        </section>
+
+        <section class="section" id="devnet">
+          <div class="section-heading">
+            <div class="eyebrow">Devnet setup</div>
+            <h2>Paste your key, verify balances, then run the real flow.</h2>
+            <p>The project now auto-loads `.env.devnet`, so you can configure devnet without shell gymnastics.</p>
+          </div>
+
+          <div class="setup-grid">
+            <article class="panel setup-card">
+              <h3>1. Fill the env file</h3>
+              <p>Paste your buyer private key into `.env.devnet`, then set the provider destination and real devnet mint.</p>
+              <p class="text-link">File path: <code>D:\frontier hackhton\whisperapi\.env.devnet</code></p>
+            </article>
+            <article class="panel setup-card">
+              <h3>2. Run the check script</h3>
+              <p>Use `npm run check:devnet` to verify MagicBlock health, wallet readiness, and token balances before the UI demo.</p>
+            </article>
+            <article class="panel setup-card">
+              <h3>3. Demo it live</h3>
+              <p>Once `ready: true` appears in Integration Status, run the private flow and use the returned signatures in your demo.</p>
+            </article>
+          </div>
+        </section>
+      </main>
+    </div>
+    <script src="/app.js" defer></script>
+  </body>
+</html>

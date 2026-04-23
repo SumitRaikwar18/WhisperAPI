@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WhisperAPI Pitch Deck</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #0b1218;
+        --panel: #111a22;
+        --soft: #1b2a36;
+        --line: rgba(255,255,255,0.08);
+        --text: #eef5ff;
+        --muted: #98a8ba;
+        --accent: #4dd3b1;
+        --accent-2: #7aa9ff;
+      }
+      * { box-sizing: border-box; }
+      html { scroll-behavior: smooth; }
+      body {
+        margin: 0;
+        font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+        background:
+          radial-gradient(circle at top left, rgba(77, 211, 177, 0.12), transparent 24%),
+          radial-gradient(circle at top right, rgba(122, 169, 255, 0.16), transparent 26%),
+          var(--bg);
+        color: var(--text);
+      }
+      .shell {
+        width: min(1180px, calc(100% - 32px));
+        margin: 0 auto;
+        padding: 28px 0 64px;
+      }
+      .nav {
+        position: sticky;
+        top: 16px;
+        z-index: 2;
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 12px 16px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        background: rgba(11, 18, 24, 0.78);
+        backdrop-filter: blur(14px);
+      }
+      .nav a {
+        color: var(--muted);
+        text-decoration: none;
+        font-size: 0.92rem;
+      }
+      .slide {
+        min-height: 88vh;
+        margin-top: 22px;
+        padding: 34px;
+        border: 1px solid var(--line);
+        border-radius: 32px;
+        background: rgba(17, 26, 34, 0.92);
+      }
+      .eyebrow {
+        display: inline-flex;
+        min-height: 32px;
+        align-items: center;
+        padding: 0 12px;
+        border-radius: 999px;
+        background: rgba(77, 211, 177, 0.12);
+        color: var(--accent);
+        font-size: 0.76rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      h1, h2, h3, p { margin: 0; }
+      h1 {
+        margin-top: 18px;
+        font-size: clamp(3rem, 7vw, 5.8rem);
+        line-height: 0.92;
+        letter-spacing: -0.06em;
+        max-width: 10ch;
+      }
+      h2 {
+        margin-top: 16px;
+        font-size: clamp(2rem, 4vw, 3.5rem);
+        line-height: 0.95;
+        letter-spacing: -0.05em;
+      }
+      h3 {
+        font-size: 1.1rem;
+        line-height: 1.15;
+      }
+      .lede, .subtitle, .notes, li, .metric-label {
+        color: var(--muted);
+        line-height: 1.55;
+      }
+      .lede {
+        margin-top: 18px;
+        font-size: 1.15rem;
+        max-width: 60ch;
+      }
+      .hero-grid, .two-col, .three-col, .metrics, .timeline {
+        display: grid;
+        gap: 16px;
+      }
+      .hero-grid { grid-template-columns: 1.2fr .8fr; align-items: end; margin-top: 28px; }
+      .two-col { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 24px; }
+      .three-col { grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 24px; }
+      .metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 26px; }
+      .card, .metric, .note-box, .timeline-step {
+        padding: 18px;
+        border: 1px solid var(--line);
+        border-radius: 22px;
+        background: var(--panel);
+      }
+      .metric-value {
+        display: block;
+        margin-top: 10px;
+        font-size: 1.35rem;
+        font-weight: 700;
+        color: var(--text);
+      }
+      ul {
+        margin: 16px 0 0;
+        padding-left: 18px;
+      }
+      li + li { margin-top: 10px; }
+      .timeline-step {
+        position: relative;
+        padding-top: 42px;
+      }
+      .timeline-step strong {
+        position: absolute;
+        top: 16px;
+        color: var(--accent-2);
+        font-size: 0.82rem;
+        letter-spacing: 0.08em;
+      }
+      .notes {
+        margin-top: 18px;
+        padding: 14px 16px;
+        border-left: 3px solid var(--accent);
+        background: rgba(77, 211, 177, 0.06);
+      }
+      code {
+        color: var(--accent);
+        font-family: "JetBrains Mono", monospace;
+      }
+      @media (max-width: 820px) {
+        .hero-grid, .two-col, .three-col, .metrics {
+          grid-template-columns: 1fr;
+        }
+        .slide { min-height: auto; padding: 22px; }
+        h1 { max-width: none; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <nav class="nav">
+        <strong>WhisperAPI Deck</strong>
+        <div>
+          <a href="#s1">Start</a>
+          <a href="#s4">Product</a>
+          <a href="#s7">Moat</a>
+          <a href="#s9">Ask</a>
+        </div>
+      </nav>
+
+      <section class="slide" id="s1">
+        <div class="eyebrow">Slide 1 · Title</div>
+        <div class="hero-grid">
+          <div>
+            <h1>Private x402 payments for the metered agent economy.</h1>
+            <p class="lede">
+              WhisperAPI is the checkout layer that lets agents pay for APIs, quotes, and merchant
+              services on Solana without exposing provider choice, spend, or usage cadence on public rails.
+            </p>
+          </div>
+          <div class="note-box">
+            <h3>One-line analogy</h3>
+            <p class="subtitle">Stripe Billing for agent-to-API payments, but private by default with MagicBlock PER.</p>
+          </div>
+        </div>
+        <div class="metrics">
+          <article class="metric">
+            <span class="metric-label">Commercial handshake</span>
+            <span class="metric-value">x402-compatible 402 -> private settle -> receipt retry</span>
+          </article>
+          <article class="metric">
+            <span class="metric-label">Private execution</span>
+            <span class="metric-value">MagicBlock deposit + private transfer + optional withdraw</span>
+          </article>
+          <article class="metric">
+            <span class="metric-label">Target wedge</span>
+            <span class="metric-value">Paid APIs, quote endpoints, merchant connectors</span>
+          </article>
+        </div>
+        <div class="notes">Presenter notes: Start with the leak. Today every public machine payment reveals which provider an agent uses, how much it pays, and how often it pays. WhisperAPI removes that exhaust without changing the basic x402 developer flow.</div>
+      </section>
+
+      <section class="slide" id="s2">
+        <div class="eyebrow">Slide 2 · Problem</div>
+        <h2>Public payment rails turn agent spend into competitive intelligence.</h2>
+        <div class="two-col">
+          <article class="card">
+            <h3>What leaks today</h3>
+            <ul>
+              <li>Per-call amount is visible or easily inferable from the payment route.</li>
+              <li>Provider selection becomes readable once a wallet-to-service mapping is known.</li>
+              <li>Payment cadence exposes traffic, model usage, and supply strategy.</li>
+            </ul>
+          </article>
+          <article class="card">
+            <h3>Why it matters</h3>
+            <ul>
+              <li>API providers, brokers, and merchant connectors become involuntary public dashboards.</li>
+              <li>Agents cannot negotiate or route privately if every payment leaves public exhaust.</li>
+              <li>Serious businesses will not move sensitive machine spend onto fully transparent rails.</li>
+            </ul>
+          </article>
+        </div>
+        <div class="notes">Presenter notes: This is not “privacy for privacy’s sake.” It is an operational requirement for real machine commerce. If agents are going to buy search, compute, data, and travel on their own, the payment path cannot leak the playbook.</div>
+      </section>
+
+      <section class="slide" id="s3">
+        <div class="eyebrow">Slide 3 · Why Now</div>
+        <h2>The stack only became possible now.</h2>
+        <div class="three-col">
+          <article class="card">
+            <h3>x402 is real</h3>
+            <p class="subtitle">Solana is explicitly supporting x402 and machine-payment flows for APIs and services.</p>
+          </article>
+          <article class="card">
+            <h3>MagicBlock PER is live</h3>
+            <p class="subtitle">Private payment execution on Solana now has a usable transaction-builder API for deposit, transfer, and withdraw.</p>
+          </article>
+          <article class="card">
+            <h3>Agents are buying software</h3>
+            <p class="subtitle">Inference, data, quote, and merchant endpoints are becoming metered machine-to-machine businesses.</p>
+          </article>
+        </div>
+        <div class="notes">Presenter notes: The category shift is that autonomous software is now a buyer. The infrastructure shift is that private payment execution is now accessible without building bespoke privacy cryptography from scratch.</div>
+      </section>
+
+      <section class="slide" id="s4">
+        <div class="eyebrow">Slide 4 · Product</div>
+        <h2>WhisperAPI wraps a standard paid request in a private settlement path.</h2>
+        <div class="timeline">
+          <article class="timeline-step">
+            <strong>01</strong>
+            <h3>Agent hits a paid endpoint</h3>
+            <p class="subtitle">The endpoint returns <code>402 Payment Required</code> and the payment specification.</p>
+          </article>
+          <article class="timeline-step">
+            <strong>02</strong>
+            <h3>WhisperAPI opens a private session</h3>
+            <p class="subtitle">The app builds and signs a MagicBlock deposit transaction for the buyer wallet.</p>
+          </article>
+          <article class="timeline-step">
+            <strong>03</strong>
+            <h3>Private transfer settles inside PER</h3>
+            <p class="subtitle">The provider destination is paid privately rather than through a readable public per-call transfer.</p>
+          </article>
+          <article class="timeline-step">
+            <strong>04</strong>
+            <h3>Receipt retries the original request</h3>
+            <p class="subtitle">The provider returns the response, and the observer panel shows what did and did not leak.</p>
+          </article>
+        </div>
+        <div class="notes">Presenter notes: Judges should understand the flow in one breath. We are not replacing x402. We are making the payment execution part private while preserving the commercial handshake and the provider confirmation flow.</div>
+      </section>
+
+      <section class="slide" id="s5">
+        <div class="eyebrow">Slide 5 · Demo</div>
+        <h2>The demo is legible in under a minute.</h2>
+        <div class="two-col">
+          <article class="card">
+            <h3>Left side</h3>
+            <ul>
+              <li>Run the public flow.</li>
+              <li>Show the readable payment trail.</li>
+              <li>Point to provider, amount, and cadence leakage.</li>
+            </ul>
+          </article>
+          <article class="card">
+            <h3>Right side</h3>
+            <ul>
+              <li>Run the private flow.</li>
+              <li>Show PER session, receipt, and live MagicBlock status.</li>
+              <li>Highlight batched or optional withdrawal instead of per-call exposure.</li>
+            </ul>
+          </article>
+        </div>
+        <div class="notes">Presenter notes: The winning moment is the side-by-side contrast. Public flow leaks the business. Private flow still completes the purchase, but the readable trail disappears.</div>
+      </section>
+
+      <section class="slide" id="s6">
+        <div class="eyebrow">Slide 6 · Why Solana + MagicBlock</div>
+        <h2>Solana gives the payment speed. MagicBlock gives the privacy boundary.</h2>
+        <div class="three-col">
+          <article class="card">
+            <h3>Solana</h3>
+            <p class="subtitle">Fast cheap settlement and a growing machine-payments narrative.</p>
+          </article>
+          <article class="card">
+            <h3>MagicBlock</h3>
+            <p class="subtitle">Private execution layer that actually matches the product requirement instead of simulating privacy offchain.</p>
+          </article>
+          <article class="card">
+            <h3>x402</h3>
+            <p class="subtitle">Standards-compatible commercial handshake that providers already understand.</p>
+          </article>
+        </div>
+        <div class="notes">Presenter notes: The crypto necessity test is clean here. Remove Solana and PER, and you lose cheap programmable settlement and private onchain execution. The product degrades into a centralized billing proxy.</div>
+      </section>
+
+      <section class="slide" id="s7">
+        <div class="eyebrow">Slide 7 · Market + Moat</div>
+        <h2>The wedge is paid APIs. The moat is merchant-side integration and routing gravity.</h2>
+        <div class="two-col">
+          <article class="card">
+            <h3>Beachhead users</h3>
+            <ul>
+              <li>Agent builders paying for search, data, and quote endpoints</li>
+              <li>Travel or booking agents buying merchant quotes privately</li>
+              <li>Providers that want paid access without exposing customer activity publicly</li>
+            </ul>
+          </article>
+          <article class="card">
+            <h3>Why this can compound</h3>
+            <ul>
+              <li>Every provider connector makes the network more useful.</li>
+              <li>Every buyer integration increases merchant demand for the wrapper.</li>
+              <li>Receipts, policy rules, and provider dashboards become sticky workflow infrastructure.</li>
+            </ul>
+          </article>
+        </div>
+        <div class="notes">Presenter notes: This starts narrow and infrastructure-first. We do not need to boil the ocean. The first credible wedge is a handful of paid APIs where privacy matters immediately.</div>
+      </section>
+
+      <section class="slide" id="s8">
+        <div class="eyebrow">Slide 8 · Business Model</div>
+        <h2>Charge on routed volume, not vanity accounts.</h2>
+        <div class="three-col">
+          <article class="card">
+            <h3>Take rate</h3>
+            <p class="subtitle">Basis points on successfully settled machine payments.</p>
+          </article>
+          <article class="card">
+            <h3>Provider plan</h3>
+            <p class="subtitle">Hosted merchant connectors, receipt management, and usage analytics with privacy preserved.</p>
+          </article>
+          <article class="card">
+            <h3>Enterprise layer</h3>
+            <p class="subtitle">Policy controls, private payment quotas, and compliance-aware reporting.</p>
+          </article>
+        </div>
+        <div class="notes">Presenter notes: Keep the model simple. Revenue follows settled volume. Premium tooling sits on top once providers want analytics and operational controls.</div>
+      </section>
+
+      <section class="slide" id="s9">
+        <div class="eyebrow">Slide 9 · What We Built</div>
+        <h2>Current build status.</h2>
+        <div class="three-col">
+          <article class="card">
+            <h3>Built</h3>
+            <p class="subtitle">Local demo, public/private observer UI, receipt issuance, MagicBlock live adapter, env loader, and devnet check script.</p>
+          </article>
+          <article class="card">
+            <h3>Verified</h3>
+            <p class="subtitle">Demo path works end to end. Live mode reaches MagicBlock health and mint-status endpoints successfully.</p>
+          </article>
+          <article class="card">
+            <h3>Next proof</h3>
+            <p class="subtitle">Show a separate-provider withdraw with matching provider credentials and present returned signatures in the judge demo.</p>
+          </article>
+        </div>
+        <div class="notes">Presenter notes: Be honest. The product is integrated and already proving live devnet payments. The remaining step is operational polish around the separate provider withdrawal path and presentation quality.</div>
+      </section>
+
+      <section class="slide" id="s10">
+        <div class="eyebrow">Slide 10 · Ask</div>
+        <h2>For the hackathon: judge us on a new primitive, not another app wrapper.</h2>
+        <div class="two-col">
+          <article class="card">
+            <h3>What we want judges to believe</h3>
+            <ul>
+              <li>Agent commerce needs private payment rails.</li>
+              <li>MagicBlock PER is central, not incidental, to the product.</li>
+              <li>WhisperAPI can become the default private checkout path for paid machine services.</li>
+            </ul>
+          </article>
+          <article class="card">
+            <h3>Immediate next milestones</h3>
+            <ul>
+              <li>Enable separate-provider withdrawal with a matched provider signing key</li>
+              <li>Record real transaction signatures in the demo</li>
+              <li>Add a second high-value merchant or data provider connector</li>
+            </ul>
+          </article>
+        </div>
+        <div class="notes">Presenter notes: Close by zooming out. The product is bigger than private API billing. It is a trust and privacy layer for autonomous software buying software. That is the frontier category.</div>
+      </section>
+    </div>
+  </body>
+</html>

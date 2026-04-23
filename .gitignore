@@ -1,0 +1,8 @@
+node_modules/
+.env
+.env.local
+.env.devnet
+.env.devnet.local
+.data/
+.superstack/
+*.log

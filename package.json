@@ -1,0 +1,19 @@
+{
+  "name": "whisperapi",
+  "version": "0.1.0",
+  "private": true,
+  "description": "WhisperAPI MVP: private x402-compatible checkout for paid APIs and agent commerce.",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "check:devnet": "node scripts/check-devnet.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@magicblock-labs/ephemeral-rollups-sdk": "^0.11.1",
+    "@solana/web3.js": "^1.98.4",
+    "tweetnacl": "^1.0.3"
+  }
+}
