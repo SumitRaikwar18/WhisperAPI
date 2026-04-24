@@ -157,6 +157,7 @@ whisperapi/
     REVIEW.md
   public/
     index.html
+    dashboard.html
     styles.css
     app.js
   scripts/
