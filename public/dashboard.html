@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>WhisperAPI — Demo Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@500;700;800&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#040810;
+  --surface:#07101f;
+  --surface2:#0b1525;
+  --surface3:#0f1e30;
+  --border:rgba(255,255,255,0.06);
+  --border-strong:rgba(255,255,255,0.12);
+  --text:#e8f4ff;
+  --muted:#3d5a7a;
+  --muted2:#6a8aaa;
+  --accent:#00dc96;
+  --accent2:#0070f3;
+  --danger:#ff4d4d;
+  --warn:#f5a623;
+  --mono:'Space Mono',monospace;
+  --sans:'Syne',sans-serif;
+}
+html,body{height:100%;overflow:hidden}
+body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:var(--mono);
+  font-size:12px;
+  display:flex;
+  flex-direction:column;
+}
+
+/* ── TOP BAR ── */
+.topbar{
+  height:48px;
+  border-bottom:1px solid var(--border);
+  background:var(--surface);
+  display:flex;
+  align-items:center;
+  padding:0 20px;
+  gap:20px;
+  flex-shrink:0;
+}
+.topbar-logo{
+  color:var(--accent);
+  letter-spacing:0.08em;
+  font-size:13px;
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+.topbar-logo-icon{
+  width:22px;height:22px;
+  background:var(--accent);
+  border-radius:4px;
+  color:#040810;
+  display:grid;
+  place-items:center;
+  font-size:10px;
+  font-weight:700;
+}
+.topbar-sep{width:1px;height:24px;background:var(--border);flex-shrink:0}
+.mode-badge{
+  font-size:10px;
+  letter-spacing:0.1em;
+  padding:3px 10px;
+  border-radius:3px;
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+.mode-badge.live{
+  background:rgba(0,220,150,0.1);
+  border:1px solid rgba(0,220,150,0.2);
+  color:var(--accent);
+}
+.mode-badge.demo{
+  background:rgba(245,166,35,0.1);
+  border:1px solid rgba(245,166,35,0.2);
+  color:var(--warn);
+}
+.mode-dot{width:6px;height:6px;border-radius:50%;background:currentColor;animation:pulse2 2s infinite}
+@keyframes pulse2{0%,100%{opacity:1}50%{opacity:0.3}}
+.topbar-title{color:var(--muted2);font-size:11px;letter-spacing:0.06em}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:12px}
+.health-pill{
+  font-size:10px;
+  letter-spacing:0.08em;
+  padding:3px 10px;
+  border-radius:3px;
+  background:rgba(0,220,150,0.08);
+  border:1px solid rgba(0,220,150,0.15);
+  color:var(--accent);
+}
+.topbar-time{color:var(--muted);font-size:10px}
+
+/* ── LAYOUT ── */
+.workspace{
+  display:grid;
+  grid-template-columns:280px 1fr;
+  grid-template-rows:1fr;
+  flex:1;
+  overflow:hidden;
+}
+
+/* ── LEFT SIDEBAR ── */
+.sidebar{
+  border-right:1px solid var(--border);
+  background:var(--surface);
+  display:flex;
+  flex-direction:column;
+  overflow-y:auto;
+  overflow-x:hidden;
+}
+.sidebar::-webkit-scrollbar{width:4px}
+.sidebar::-webkit-scrollbar-track{background:transparent}
+.sidebar::-webkit-scrollbar-thumb{background:var(--border-strong);border-radius:2px}
+.sidebar-section{
+  padding:16px;
+  border-bottom:1px solid var(--border);
+}
+.sidebar-label{
+  font-size:9px;
+  letter-spacing:0.2em;
+  color:var(--muted);
+  text-transform:uppercase;
+  margin-bottom:12px;
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+.sidebar-label::after{content:'';flex:1;height:1px;background:var(--border)}
+
+/* ENDPOINT SELECTOR */
+.endpoint-select{
+  width:100%;
+  background:var(--surface2);
+  border:1px solid var(--border);
+  border-radius:4px;
+  color:var(--text);
+  font-family:var(--mono);
+  font-size:11px;
+  padding:10px 12px;
+  margin-bottom:12px;
+  outline:none;
+  cursor:pointer;
+  transition:border-color .2s;
+}
+.endpoint-select:focus{border-color:var(--accent)}
+.endpoint-select option{background:#0b1525}
+
+/* ACTION BUTTONS */
+.action-btn{
+  display:block;
+  width:100%;
+  padding:10px 14px;
+  border-radius:4px;
+  border:1px solid;
+  font-family:var(--mono);
+  font-size:10px;
+  letter-spacing:0.1em;
+  text-transform:uppercase;
+  cursor:pointer;
+  margin-bottom:8px;
+  transition:all .15s;
+  text-align:center;
+  position:relative;
+  overflow:hidden;
+}
+.action-btn.primary{
+  background:rgba(0,220,150,0.1);
+  border-color:rgba(0,220,150,0.3);
+  color:var(--accent);
+}
+.action-btn.primary:hover{background:rgba(0,220,150,0.2);border-color:var(--accent)}
+.action-btn.primary:active{transform:scale(0.98)}
+.action-btn.secondary{
+  background:rgba(0,112,243,0.08);
+  border-color:rgba(0,112,243,0.25);
+  color:var(--accent2);
+}
+.action-btn.secondary:hover{background:rgba(0,112,243,0.15);border-color:var(--accent2)}
+.action-btn.ghost{
+  background:transparent;
+  border-color:var(--border);
+  color:var(--muted2);
+}
+.action-btn.ghost:hover{border-color:var(--border-strong);color:var(--text)}
+.action-btn.loading{pointer-events:none;opacity:0.7}
+.action-btn .spinner{
+  display:none;
+  width:10px;height:10px;
+  border:1.5px solid currentColor;
+  border-top-color:transparent;
+  border-radius:50%;
+  animation:spin .6s linear infinite;
+  margin-right:6px;
+}
+.action-btn.loading .spinner{display:inline-block}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* LEGEND */
+.legend{display:flex;flex-direction:column;gap:8px}
+.legend-item{display:flex;align-items:center;gap:8px;font-size:10px;color:var(--muted2)}
+.legend-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.legend-dot.public{background:var(--danger)}
+.legend-dot.private{background:var(--accent)}
+.legend-dot.system{background:var(--warn)}
+
+/* INTEGRATION STATUS */
+.status-field{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:6px 0;
+  border-bottom:1px solid var(--border);
+  font-size:10px;
+}
+.status-field:last-child{border-bottom:none}
+.status-field-key{color:var(--muted2)}
+.status-field-val{color:var(--text);text-align:right;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.status-field-val.green{color:var(--accent)}
+.status-field-val.red{color:var(--danger)}
+.status-field-val.yellow{color:var(--warn)}
+
+/* ── MAIN AREA ── */
+.main{
+  display:grid;
+  grid-template-rows:auto 1fr;
+  overflow:hidden;
+}
+
+/* TABS */
+.tabs{
+  display:flex;
+  border-bottom:1px solid var(--border);
+  background:var(--surface);
+  flex-shrink:0;
+  padding:0 16px;
+  gap:0;
+}
+.tab{
+  font-family:var(--mono);
+  font-size:10px;
+  letter-spacing:0.1em;
+  text-transform:uppercase;
+  padding:14px 20px;
+  color:var(--muted2);
+  cursor:pointer;
+  border-bottom:2px solid transparent;
+  transition:all .15s;
+  white-space:nowrap;
+}
+.tab:hover{color:var(--text)}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+
+/* PANELS */
+.panels{
+  overflow:hidden;
+  display:grid;
+  grid-template-rows:1fr;
+}
+.panel{
+  display:none;
+  overflow:hidden;
+}
+.panel.active{display:grid}
+
+/* FLOW RESULT PANEL */
+#panel-flow{grid-template-columns:1fr 1fr;grid-template-rows:1fr}
+.pane{
+  border-right:1px solid var(--border);
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+}
+.pane:last-child{border-right:none}
+.pane-header{
+  padding:14px 18px;
+  border-bottom:1px solid var(--border);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  flex-shrink:0;
+}
+.pane-title-text{
+  font-size:10px;
+  letter-spacing:0.14em;
+  text-transform:uppercase;
+  color:var(--muted2);
+}
+.pane-badge{
+  font-size:9px;
+  padding:2px 8px;
+  border-radius:2px;
+  letter-spacing:0.08em;
+}
+.pane-badge.public{background:rgba(255,77,77,0.1);color:var(--danger);border:1px solid rgba(255,77,77,0.2)}
+.pane-badge.private{background:rgba(0,220,150,0.08);color:var(--accent);border:1px solid rgba(0,220,150,0.15)}
+.pane-body{
+  flex:1;
+  overflow-y:auto;
+  padding:16px 18px;
+  font-size:11px;
+  line-height:1.9;
+}
+.pane-body::-webkit-scrollbar{width:4px}
+.pane-body::-webkit-scrollbar-thumb{background:var(--border-strong);border-radius:2px}
+
+/* CODE OUTPUT */
+.code-out{
+  font-family:var(--mono);
+  font-size:11px;
+  line-height:1.8;
+  color:#3a6a4a;
+  white-space:pre-wrap;
+  word-break:break-all;
+}
+.code-out .key{color:#5a8aaa}
+.code-out .str{color:#e8d8b0}
+.code-out .num{color:#b0d8e0}
+.code-out .bool-true{color:var(--accent)}
+.code-out .bool-false{color:var(--danger)}
+.code-out .null{color:var(--muted2)}
+
+/* EVENT CARDS */
+.event-card{
+  background:var(--surface2);
+  border:1px solid var(--border);
+  border-radius:4px;
+  padding:12px 14px;
+  margin-bottom:8px;
+  transition:border-color .15s;
+}
+.event-card:hover{border-color:var(--border-strong)}
+.event-card-top{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  margin-bottom:6px;
+}
+.event-type{
+  font-size:9px;
+  letter-spacing:0.12em;
+  padding:2px 8px;
+  border-radius:2px;
+}
+.event-type.public{background:rgba(255,77,77,0.1);color:var(--danger)}
+.event-type.private{background:rgba(0,220,150,0.08);color:var(--accent)}
+.event-type.system{background:rgba(245,166,35,0.08);color:var(--warn)}
+.event-time{color:var(--muted);font-size:9px}
+.event-body{color:var(--muted2);font-size:10px;line-height:1.7}
+.event-body strong{color:var(--text)}
+.event-sig{
+  margin-top:6px;
+  font-size:9px;
+  color:var(--muted);
+  word-break:break-all;
+}
+
+/* OBSERVER PANEL */
+#panel-observer{grid-template-columns:1fr 1fr}
+
+/* STEPS PANEL */
+#panel-steps{grid-template-columns:1fr}
+.steps-list{
+  display:flex;
+  flex-direction:column;
+  gap:0;
+}
+.step-row{
+  display:grid;
+  grid-template-columns:180px 80px 1fr auto;
+  align-items:center;
+  gap:16px;
+  padding:14px 20px;
+  border-bottom:1px solid var(--border);
+  transition:background .1s;
+}
+.step-row:hover{background:var(--surface2)}
+.step-row-name{color:var(--muted2);letter-spacing:0.08em;font-size:11px}
+.step-row-status{
+  font-size:10px;
+  padding:3px 10px;
+  border-radius:3px;
+  text-align:center;
+}
+.step-row-status.success{background:rgba(0,220,150,0.1);color:var(--accent);border:1px solid rgba(0,220,150,0.2)}
+.step-row-status.skipped{background:rgba(245,166,35,0.08);color:var(--warn);border:1px solid rgba(245,166,35,0.15)}
+.step-row-status.error{background:rgba(255,77,77,0.1);color:var(--danger);border:1px solid rgba(255,77,77,0.2)}
+.step-row-status.pending{background:var(--surface2);color:var(--muted2);border:1px solid var(--border)}
+.step-row-detail{color:var(--muted2);font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.step-row-net{
+  font-size:9px;
+  color:var(--muted);
+  text-align:right;
+  white-space:nowrap;
+}
+.step-row-net span{color:var(--text)}
+
+/* EMPTY STATE */
+.empty-state{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  height:100%;
+  gap:12px;
+  color:var(--muted);
+}
+.empty-icon{
+  width:40px;height:40px;
+  border:1px solid var(--border);
+  border-radius:8px;
+  display:grid;
+  place-items:center;
+  font-size:18px;
+  color:var(--muted);
+}
+.empty-text{font-size:11px;letter-spacing:0.08em}
+
+/* NOTIFICATION TOAST */
+#toast{
+  position:fixed;
+  bottom:24px;right:24px;
+  background:var(--surface2);
+  border:1px solid var(--border-strong);
+  border-radius:6px;
+  padding:12px 20px;
+  font-size:11px;
+  color:var(--text);
+  opacity:0;
+  transform:translateY(8px);
+  transition:all .2s;
+  pointer-events:none;
+  z-index:999;
+  max-width:320px;
+}
+#toast.show{opacity:1;transform:translateY(0)}
+#toast.success{border-color:rgba(0,220,150,0.3);color:var(--accent)}
+#toast.error{border-color:rgba(255,77,77,0.3);color:var(--danger)}
+
+/* SCROLLBAR GLOBAL */
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border-strong);border-radius:2px}
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="topbar-logo">
+    <span class="topbar-logo-icon">W</span>
+    WhisperAPI
+  </div>
+  <div class="topbar-sep"></div>
+  <span class="topbar-title">Demo Console</span>
+  <div class="topbar-sep"></div>
+  <div class="mode-badge" id="mode-badge">
+    <span class="mode-dot"></span>
+    <span id="mode-text">loading...</span>
+  </div>
+  <div class="topbar-right">
+    <div class="health-pill" id="health-pill">● checking...</div>
+    <span class="topbar-time" id="clock"></span>
+  </div>
+</div>
+
+<!-- WORKSPACE -->
+<div class="workspace">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+
+    <!-- CONTROLS -->
+    <div class="sidebar-section">
+      <div class="sidebar-label">Endpoint</div>
+      <select class="endpoint-select" id="endpoint-select">
+        <option value="/api/live/weather?city=Singapore">Live weather — Singapore · 0.25 USDC</option>
+        <option value="/api/live/price?asset=solana&vs=usd">Live price — SOL/USD · 0.40 USDC</option>
+      </select>
+      <button class="action-btn primary" id="btn-private" onclick="runFlow('private')">
+        <span class="spinner"></span>
+        ▶ Run private flow
+      </button>
+      <button class="action-btn secondary" id="btn-public" onclick="runFlow('public')">
+        <span class="spinner"></span>
+        ◈ Run public flow
+      </button>
+      <button class="action-btn ghost" onclick="resetDemo()">↺ Reset demo</button>
+    </div>
+
+    <!-- LEGEND -->
+    <div class="sidebar-section">
+      <div class="sidebar-label">Legend</div>
+      <div class="legend">
+        <div class="legend-item"><span class="legend-dot private"></span>Private — concealed inside PER</div>
+        <div class="legend-item"><span class="legend-dot public"></span>Public — visible on Solana</div>
+        <div class="legend-item"><span class="legend-dot system"></span>System — session / receipt events</div>
+      </div>
+    </div>
+
+    <!-- INTEGRATION STATUS -->
+    <div class="sidebar-section" style="flex:1">
+      <div class="sidebar-label">Integration</div>
+      <div id="status-fields">
+        <div class="status-field"><span class="status-field-key">mode</span><span class="status-field-val" id="sf-mode">—</span></div>
+        <div class="status-field"><span class="status-field-key">ready</span><span class="status-field-val" id="sf-ready">—</span></div>
+        <div class="status-field"><span class="status-field-key">health</span><span class="status-field-val" id="sf-health">—</span></div>
+        <div class="status-field"><span class="status-field-key">cluster</span><span class="status-field-val" id="sf-cluster">—</span></div>
+        <div class="status-field"><span class="status-field-key">mint init</span><span class="status-field-val" id="sf-mint">—</span></div>
+        <div class="status-field"><span class="status-field-key">buyer</span><span class="status-field-val" id="sf-buyer">—</span></div>
+        <div class="status-field"><span class="status-field-key">provider</span><span class="status-field-val" id="sf-provider">—</span></div>
+        <div class="status-field"><span class="status-field-key">withdraw</span><span class="status-field-val" id="sf-withdraw">—</span></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+
+    <!-- TABS -->
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab('flow')" id="tab-flow">Flow result</div>
+      <div class="tab" onclick="switchTab('observer')" id="tab-observer">Observer panels</div>
+      <div class="tab" onclick="switchTab('steps')" id="tab-steps">Payment steps</div>
+    </div>
+
+    <!-- PANELS -->
+    <div class="panels">
+
+      <!-- FLOW RESULT -->
+      <div class="panel active" id="panel-flow">
+        <div class="pane">
+          <div class="pane-header">
+            <span class="pane-title-text">Latest result</span>
+            <span class="pane-badge private" id="result-badge">awaiting run</span>
+          </div>
+          <div class="pane-body">
+            <div id="result-out" class="code-out" style="color:var(--muted)">// Run a flow to see output</div>
+          </div>
+        </div>
+        <div class="pane">
+          <div class="pane-header">
+            <span class="pane-title-text">Receipts &amp; sessions</span>
+            <span class="pane-badge system" id="receipts-count">0 items</span>
+          </div>
+          <div class="pane-body" id="receipts-list">
+            <div class="empty-state">
+              <div class="empty-icon">⬡</div>
+              <span class="empty-text">No receipts yet</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- OBSERVER PANELS -->
+      <div class="panel" id="panel-observer">
+        <div class="pane">
+          <div class="pane-header">
+            <span class="pane-title-text">Public chain view</span>
+            <span class="pane-badge public">visible on Solana</span>
+          </div>
+          <div class="pane-body" id="public-ledger">
+            <div class="empty-state">
+              <div class="empty-icon">◈</div>
+              <span class="empty-text">No public events yet</span>
+            </div>
+          </div>
+        </div>
+        <div class="pane">
+          <div class="pane-header">
+            <span class="pane-title-text">Private session view</span>
+            <span class="pane-badge private">inside PER</span>
+          </div>
+          <div class="pane-body" id="private-ledger">
+            <div class="empty-state">
+              <div class="empty-icon">▣</div>
+              <span class="empty-text">No private events yet</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PAYMENT STEPS -->
+      <div class="panel" id="panel-steps">
+        <div class="pane" style="border-right:none">
+          <div class="pane-header">
+            <span class="pane-title-text">Payment step trace</span>
+            <span class="pane-badge private" id="steps-count">0 steps</span>
+          </div>
+          <div class="pane-body" id="steps-body" style="padding:0">
+            <div class="steps-list" id="steps-list">
+              <div class="step-row" style="border-top:1px solid var(--border)">
+                <span class="step-row-name" style="color:var(--muted)">deposit</span>
+                <span class="step-row-status pending">pending</span>
+                <span class="step-row-detail" style="color:var(--muted)">awaiting run</span>
+                <span class="step-row-net">—</span>
+              </div>
+              <div class="step-row">
+                <span class="step-row-name" style="color:var(--muted)">private-transfer</span>
+                <span class="step-row-status pending">pending</span>
+                <span class="step-row-detail" style="color:var(--muted)">awaiting run</span>
+                <span class="step-row-net">—</span>
+              </div>
+              <div class="step-row">
+                <span class="step-row-name" style="color:var(--muted)">withdraw</span>
+                <span class="step-row-status pending">pending</span>
+                <span class="step-row-detail" style="color:var(--muted)">awaiting run</span>
+                <span class="step-row-net">—</span>
+              </div>
+            </div>
+
+            <!-- PROVIDER SETTLEMENTS -->
+            <div style="padding:20px 20px 8px;border-top:1px solid var(--border);margin-top:8px">
+              <div style="font-size:9px;letter-spacing:0.18em;color:var(--muted);text-transform:uppercase;margin-bottom:12px">Provider settlements</div>
+              <div id="settlements-list">
+                <div style="color:var(--muted);font-size:10px">No settlements yet.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<script>
+// ── State ──
+const state = {
+  lastResult: null,
+  steps: [],
+  running: false,
+};
+
+// ── Clock ──
+function tickClock(){
+  document.getElementById('clock').textContent = new Date().toLocaleTimeString('en-US',{hour12:false});
+}
+tickClock();setInterval(tickClock,1000);
+
+// ── Tab switching ──
+function switchTab(id){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('tab-'+id).classList.add('active');
+  document.getElementById('panel-'+id).classList.add('active');
+}
+
+// ── Toast ──
+let toastTimer;
+function showToast(msg, type=''){
+  const el=document.getElementById('toast');
+  el.textContent=msg;el.className='';
+  if(type)el.classList.add(type);
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>el.classList.remove('show'),3000);
+}
+
+// ── JSON pretty print ──
+function syntaxHighlight(obj){
+  const json=JSON.stringify(obj,null,2);
+  return json
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/("(\\u[\da-fA-F]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+-]?\d+)?)/g,match=>{
+      if(/^"/.test(match)){
+        if(/:$/.test(match))return `<span class="key">${match}</span>`;
+        return `<span class="str">${match}</span>`;
+      }
+      if(/true/.test(match))return `<span class="bool-true">${match}</span>`;
+      if(/false/.test(match))return `<span class="bool-false">${match}</span>`;
+      if(/null/.test(match))return `<span class="null">${match}</span>`;
+      return `<span class="num">${match}</span>`;
+    });
+}
+
+// ── Integration status ──
+async function loadStatus(){
+  try{
+    const r=await fetch('/api/integration/status');
+    const s=await r.json();
+    applyStatus(s);
+  }catch(e){
+    document.getElementById('sf-mode').textContent='error';
+    document.getElementById('sf-mode').className='status-field-val red';
+  }
+}
+
+function applyStatus(s){
+  const set=(id,val,cls)=>{
+    const el=document.getElementById(id);
+    if(!el)return;
+    el.textContent=String(val??'—');
+    el.className='status-field-val '+(cls||'');
+  };
+  set('sf-mode',s.mode,s.mode==='magicblock-live'?'green':'yellow');
+  set('sf-ready',s.ready?'true':'false',s.ready?'green':'red');
+  set('sf-health',s.health||'—',s.health==='ok'?'green':'red');
+  set('sf-cluster',s.cluster||'—');
+  set('sf-mint',s.mintInitialized?'true':'false',s.mintInitialized?'green':'yellow');
+  const buyer=s.buyer?s.buyer.slice(0,8)+'…':'not set';
+  set('sf-buyer',buyer,s.buyer?'':'red');
+  const prov=s.providerDestination?s.providerDestination.slice(0,8)+'…':'not set';
+  set('sf-provider',prov,s.providerDestination?'':'red');
+  set('sf-withdraw',s.providerWithdrawEnabled?'enabled':'disabled',s.providerWithdrawEnabled?'green':'yellow');
+
+  const modeBadge=document.getElementById('mode-badge');
+  const modeText=document.getElementById('mode-text');
+  modeBadge.className='mode-badge '+(s.mode==='magicblock-live'?'live':'demo');
+  modeText.textContent=s.mode==='magicblock-live'?'magicblock-live':'demo mode';
+
+  const hp=document.getElementById('health-pill');
+  hp.textContent=s.health==='ok'?'● health: ok':'● health: error';
+  hp.style.color=s.health==='ok'?'var(--accent)':'var(--danger)';
+  hp.style.borderColor=s.health==='ok'?'rgba(0,220,150,0.2)':'rgba(255,77,77,0.2)';
+  hp.style.background=s.health==='ok'?'rgba(0,220,150,0.08)':'rgba(255,77,77,0.08)';
+}
+
+// ── Render event cards ──
+function renderEventCards(items, containerId, mode){
+  const el=document.getElementById(containerId);
+  if(!items||!items.length){
+    el.innerHTML=`<div class="empty-state"><div class="empty-icon">○</div><span class="empty-text">No events yet</span></div>`;
+    return;
+  }
+  el.innerHTML=items.map(item=>{
+    const type=item.type||'EVENT';
+    const cls=type.includes('PUBLIC')||type.includes('BATCHED')?'public':type.includes('RECEIPT')||type.includes('WITHDRAW')||type.includes('DEPOSIT')||type.includes('TRANSFER')||type.includes('SESSION')?'private':'system';
+    const time=item.timestamp?new Date(item.timestamp).toLocaleTimeString('en-US',{hour12:false}):'';
+    const detail=Object.entries(item).filter(([k])=>!['id','type','timestamp'].includes(k)).slice(0,4).map(([k,v])=>`<strong>${k}:</strong> ${v}`).join(' &nbsp;·&nbsp; ');
+    return `<div class="event-card">
+      <div class="event-card-top">
+        <span class="event-type ${cls}">${type}</span>
+        <span class="event-time">${time}</span>
+      </div>
+      <div class="event-body">${detail}</div>
+    </div>`;
+  }).join('');
+}
+
+// ── Render receipts ──
+function renderReceipts(sessions, receipts){
+  const all=[...receipts,...sessions].sort((a,b)=>new Date(b.createdAt||b.timestamp)-new Date(a.createdAt||a.timestamp));
+  const el=document.getElementById('receipts-list');
+  document.getElementById('receipts-count').textContent=all.length+' items';
+  if(!all.length){
+    el.innerHTML=`<div class="empty-state"><div class="empty-icon">⬡</div><span class="empty-text">No receipts yet</span></div>`;
+    return;
+  }
+  el.innerHTML=all.map(item=>{
+    const isReceipt=!!item.token;
+    const type=isReceipt?'RECEIPT':'SESSION';
+    const cls=isReceipt?'private':'system';
+    const status=item.status||'OPEN';
+    const id=item.token||item.id||'—';
+    const time=new Date(item.createdAt||item.timestamp).toLocaleTimeString('en-US',{hour12:false});
+    return `<div class="event-card">
+      <div class="event-card-top">
+        <span class="event-type ${cls}">${type}</span>
+        <span class="event-time">${time}</span>
+      </div>
+      <div class="event-body">
+        <strong>id:</strong> ${id.slice(0,16)}… &nbsp;·&nbsp;
+        <strong>status:</strong> ${status}${item.amount?` &nbsp;·&nbsp; <strong>amount:</strong> ${item.amount} ${item.asset||''}`:''}</div>
+    </div>`;
+  }).join('');
+}
+
+// ── Render payment steps ──
+function renderSteps(steps, settlements){
+  const list=document.getElementById('steps-list');
+  document.getElementById('steps-count').textContent=(steps||[]).length+' steps';
+  if(!steps||!steps.length){
+    list.innerHTML=`<div class="step-row" style="border-top:1px solid var(--border)"><span class="step-row-name" style="color:var(--muted)">—</span><span class="step-row-status pending">pending</span><span class="step-row-detail" style="color:var(--muted)">awaiting run</span><span class="step-row-net">—</span></div>`;
+    return;
+  }
+  list.innerHTML=steps.map(step=>{
+    const statusCls=step.status==='SUCCESS'?'success':step.status==='SKIPPED'?'skipped':step.status==='ERROR'?'error':'pending';
+    const sig=step.signature?`sig: ${step.signature.slice(0,12)}…`:'';
+    const detail=step.reason||sig||step.destination?.slice(0,12)+'…'||'—';
+    const net=step.sendTo?`<span>${step.sendTo}</span>`:step.network?`<span>${step.network.replace('MagicBlock ','')}</span>`:'—';
+    return `<div class="step-row">
+      <span class="step-row-name">${step.step||step.kind||'—'}</span>
+      <span class="step-row-status ${statusCls}">${step.status||'—'}</span>
+      <span class="step-row-detail">${detail}</span>
+      <span class="step-row-net">${net}</span>
+    </div>`;
+  }).join('');
+
+  const sl=document.getElementById('settlements-list');
+  if(!settlements||!settlements.length){
+    sl.innerHTML='<div style="color:var(--muted);font-size:10px">No settlements yet.</div>';
+    return;
+  }
+  sl.innerHTML=settlements.slice(0,4).map(s=>`<div class="event-card" style="margin-bottom:6px">
+    <div class="event-body">
+      <strong>provider:</strong> ${(s.provider||'').slice(0,28)} &nbsp;·&nbsp;
+      <strong>mode:</strong> ${s.mode||'—'} &nbsp;·&nbsp;
+      <strong>amount:</strong> ${s.amount} ${s.asset||''}
+      <div class="event-sig">${s.visibleOnPublicChain||''}</div>
+    </div>
+  </div>`).join('');
+}
+
+// ── Refresh all state ──
+async function refreshState(){
+  const [statusRes, stateRes]=await Promise.allSettled([
+    fetch('/api/integration/status').then(r=>r.json()),
+    fetch('/api/state').then(r=>r.json()),
+  ]);
+  if(statusRes.status==='fulfilled')applyStatus(statusRes.value);
+  if(stateRes.status==='fulfilled'){
+    const s=stateRes.value;
+    renderEventCards(s.publicLedger,'public-ledger','public');
+    renderEventCards(s.privateLedger,'private-ledger','private');
+    renderReceipts(s.sessions||[],s.receipts||[]);
+    renderSteps(state.steps, s.providerSettlements||[]);
+  }
+}
+
+// ── Run flow ──
+async function runFlow(mode){
+  if(state.running)return;
+  state.running=true;
+  const btnId='btn-'+(mode==='private'?'private':'public');
+  const btn=document.getElementById(btnId);
+  btn.classList.add('loading');
+
+  const endpoint=document.getElementById('endpoint-select').value;
+  const badge=document.getElementById('result-badge');
+  const resultOut=document.getElementById('result-out');
+
+  badge.textContent='running…';
+  badge.className='pane-badge '+(mode==='private'?'private':'public');
+  resultOut.innerHTML='<span style="color:var(--muted)">// sending request…</span>';
+
+  try{
+    const r=await fetch(`/api/demo/${mode}`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({endpoint}),
+    });
+    const data=await r.json();
+    state.lastResult=data;
+    state.steps=data.paymentSteps||[];
+
+    resultOut.innerHTML=syntaxHighlight(data);
+    badge.textContent=mode+' · '+(r.ok?'ok':'error');
+    badge.className='pane-badge '+(mode==='private'?'private':'public');
+
+    // Auto-switch to steps tab if private
+    if(mode==='private'&&state.steps.length)switchTab('steps');
+
+    await refreshState();
+    showToast(mode==='private'?'Private flow complete':'Public flow complete', r.ok?'success':'error');
+  }catch(e){
+    resultOut.innerHTML=`<span style="color:var(--danger)">// error: ${e.message}</span>`;
+    showToast('Request failed: '+e.message,'error');
+  }finally{
+    state.running=false;
+    btn.classList.remove('loading');
+  }
+}
+
+// ── Reset ──
+async function resetDemo(){
+  await fetch('/api/reset',{method:'POST'});
+  state.steps=[];
+  state.lastResult=null;
+  document.getElementById('result-out').innerHTML='<span style="color:var(--muted)">// demo reset</span>';
+  document.getElementById('result-badge').textContent='awaiting run';
+  await refreshState();
+  showToast('Demo reset','');
+}
+
+// ── Init ──
+(async function init(){
+  await refreshState();
+  setInterval(loadStatus, 15000);
+})();
+</script>
+</body>
+</html>

@@ -174,13 +174,13 @@ function serveStatic(req, res, pathname) {
   filePath = path.join(publicDir, filePath);
 
   if (!filePath.startsWith(publicDir)) {
-    sendText(res, 403, "Forbidden");
+    sendJson(res, 403, { error: "FORBIDDEN" });
     return;
   }
 
   fs.readFile(filePath, (error, buffer) => {
     if (error) {
-      sendText(res, 404, "Not found");
+      sendJson(res, 404, { error: "NOT_FOUND" });
       return;
     }
 
@@ -318,5 +318,6 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`WhisperAPI MVP running at http://localhost:${PORT}`);
+  console.log(`WhisperAPI running at http://localhost:${PORT}`);
+  console.log(`Mode: ${process.env.WHISPER_PAYMENT_MODE || "demo"}`);
 });

@@ -17,6 +17,10 @@ async function main() {
 
   const status = await adapter.getStatus();
   console.log(JSON.stringify(status, null, 2));
+
+  if (!status.ready || status.health !== "ok") {
+    process.exitCode = 1;
+  }
 }
 
 main().catch((error) => {

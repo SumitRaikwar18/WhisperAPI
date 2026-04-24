@@ -6,7 +6,8 @@ const {
   VersionedTransaction,
   clusterApiUrl,
 } = require("@solana/web3.js");
-const bs58 = require("bs58");
+const rawBs58 = require("bs58");
+const bs58 = rawBs58.default || rawBs58;
 const nacl = require("tweetnacl");
 const {
   getAuthToken,
@@ -19,7 +20,7 @@ const DEVNET_TEE_RPC = "https://devnet-tee.magicblock.app";
 const MAINNET_TEE_RPC = "https://mainnet-tee.magicblock.app";
 const DEVNET_TEE_VALIDATOR = "MTEWGuqxUpYZGFJQcp8tLN7x5v9BSeoFHYWQQ3n3xzo";
 const MAINNET_TEE_VALIDATOR = "MTEWGuqxUpYZGFJQcp8tLN7x5v9BSeoFHYWQQ3n3xzo";
-const DEFAULT_USDC_MINT = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
+const DEFAULT_USDC_MINT = "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU";
 
 function normalizeCluster(input) {
   if (!input || input === "devnet") {
@@ -100,6 +101,21 @@ function buildQuery(params) {
   }
 
   return search.toString();
+}
+
+function normalizeBalancePayload(payload, decimals) {
+  if (!payload || typeof payload !== "object") {
+    return null;
+  }
+
+  return {
+    balance: String(payload.balance ?? "0"),
+    decimals,
+    address: payload.address || null,
+    ata: payload.ata || null,
+    location: payload.location || null,
+    mint: payload.mint || null,
+  };
 }
 
 async function fetchJson(url, options = {}) {
@@ -432,15 +448,21 @@ class MagicBlockPrivatePaymentsAdapter {
     }
 
     const owner = this.buyerSigner.publicKey.toBase58();
-    result.base = await this.apiGet("/v1/spl/balance", {
-      address: owner,
-      cluster: this.cluster,
-      mint: this.mint,
-    });
+    result.base = normalizeBalancePayload(
+      await this.apiGet("/v1/spl/balance", {
+        address: owner,
+        cluster: this.cluster,
+        mint: this.mint,
+      }),
+      this.decimals
+    );
 
     try {
       const buyerToken = await this.getAuthTokenForSigner(this.buyerSigner);
-      result.private = await this.getPrivateBalance(owner, buyerToken);
+      result.private = normalizeBalancePayload(
+        await this.getPrivateBalance(owner, buyerToken),
+        this.decimals
+      );
     } catch (error) {
       errors.push(`buyer private balance: ${error.message}`);
     }
@@ -448,9 +470,9 @@ class MagicBlockPrivatePaymentsAdapter {
     if (this.providerDestination && this.providerSigner) {
       try {
         const providerToken = await this.getAuthTokenForSigner(this.providerSigner);
-        result.providerPrivate = await this.getPrivateBalance(
-          this.providerDestination,
-          providerToken
+        result.providerPrivate = normalizeBalancePayload(
+          await this.getPrivateBalance(this.providerDestination, providerToken),
+          this.decimals
         );
       } catch (error) {
         errors.push(`provider private balance: ${error.message}`);
