@@ -38,6 +38,21 @@ function resolveItemByEndpoint(pathname) {
   return null;
 }
 
+function resolveItemForUrl(endpoint) {
+  const parsed = new URL(`http://local${endpoint}`);
+  return resolveItemByEndpoint(parsed.pathname, parsed.searchParams);
+}
+
+function buildPaymentRequiredForEndpoint(endpoint) {
+  const item = resolveItemForUrl(endpoint);
+
+  if (!item) {
+    return null;
+  }
+
+  return buildPaymentRequired(item);
+}
+
 function buildPaymentRequired(item) {
   const amountMinor = Math.round(Number(item.amount) * 1_000_000);
   const cluster = process.env.MAGICBLOCK_CLUSTER || "devnet";
@@ -172,6 +187,8 @@ async function buildPaidApiResponse(pathname, searchParams) {
 module.exports = {
   getCatalog,
   buildPaymentRequired,
+  buildPaymentRequiredForEndpoint,
   resolveItemByEndpoint,
+  resolveItemForUrl,
   buildPaidApiResponse,
 };

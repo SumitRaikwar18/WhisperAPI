@@ -62,12 +62,13 @@ flowchart LR
 
 1. An agent calls a paid endpoint.
 2. The endpoint returns `402 Payment Required`.
-3. WhisperAPI opens a private payment session.
-4. Buyer funds are deposited into MagicBlock private payments.
-5. A private transfer settles to the provider.
-6. The provider can withdraw back to Solana base balance.
-7. The request is retried with a single-use receipt.
-8. The paid API response is returned.
+3. The agent calls `POST /api/x402/pay` to mint a fresh private receipt.
+4. WhisperAPI opens a private payment session.
+5. Buyer funds are deposited into MagicBlock private payments.
+6. A private transfer settles to the provider.
+7. The provider can withdraw back to Solana base balance.
+8. The agent retries the original request with a single-use receipt.
+9. The paid API response is returned.
 
 ## :rocket: Quick Start
 
@@ -128,6 +129,7 @@ Routes:
 - `GET /api/integration/status`
 - `GET /api/state`
 - `POST /api/reset`
+- `POST /api/x402/pay`
 - `POST /api/demo/public`
 - `POST /api/demo/private`
 - `GET /api/live/weather`
@@ -137,6 +139,16 @@ x402-compatible headers:
 
 - request: `X-Payment`, `X-Payment-Receipt`
 - response: `X-Payment-Response`
+
+Real x402-compatible path:
+
+1. `GET /api/live/...` -> `402 Payment Required`
+2. `POST /api/x402/pay` -> fresh single-use `receiptToken`
+3. `GET /api/live/...` with `X-Payment-Receipt` -> `200 OK`
+
+Judge/demo shortcut:
+
+- `POST /api/demo/private` runs the whole `402 -> pay -> retry` loop for one-click demos
 
 ## :white_check_mark: Verified
 

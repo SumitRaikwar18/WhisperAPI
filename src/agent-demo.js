@@ -1,5 +1,6 @@
 const {
   buildPaymentRequired,
+  buildPaymentRequiredForEndpoint,
   resolveItemByEndpoint,
   buildPaidApiResponse,
 } = require("./paid-apis");
@@ -90,6 +91,33 @@ async function runPrivateFlow(state, adapter, endpoint) {
   };
 }
 
+async function runPrivatePayOnly(state, adapter, endpoint) {
+  const buyer = "agent://demo-buyer";
+  const paymentRequired = buildPaymentRequiredForEndpoint(endpoint);
+
+  if (!paymentRequired) {
+    throw new Error(`Unknown paid endpoint: ${endpoint}`);
+  }
+
+  const checkout = await runPrivateCheckout(state, adapter, paymentRequired, buyer);
+
+  recordFlowRun(state, {
+    mode: "private-pay",
+    endpoint,
+    itemLabel: paymentRequired.itemLabel,
+    status: 200,
+    responseSummary: "Fresh receipt issued",
+  });
+
+  return {
+    mode: "private-pay",
+    paymentRequired,
+    session: checkout.session,
+    receipt: checkout.receipt,
+    paymentSteps: checkout.steps,
+  };
+}
+
 async function runPublicFlow(state, endpoint) {
   const buyer = "agent://demo-buyer";
   const firstResponse = await accessPaidApi(state, endpoint, null);
@@ -147,6 +175,7 @@ async function runPublicFlow(state, endpoint) {
 
 module.exports = {
   runPrivateFlow,
+  runPrivatePayOnly,
   runPublicFlow,
   accessPaidApi,
 };

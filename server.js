@@ -13,7 +13,12 @@ const {
 } = require("./src/app-state");
 const { getCatalog } = require("./src/paid-apis");
 const { createPaymentAdapter } = require("./src/payment-adapters");
-const { runPrivateFlow, runPublicFlow, accessPaidApi } = require("./src/agent-demo");
+const {
+  runPrivateFlow,
+  runPrivatePayOnly,
+  runPublicFlow,
+  accessPaidApi,
+} = require("./src/agent-demo");
 const {
   DEFAULT_STORE_PATH,
   loadStateSnapshot,
@@ -70,6 +75,10 @@ function classifyError(error) {
   const message = error?.message || "Unexpected error.";
 
   if (message.includes("Invalid JSON body")) {
+    return { statusCode: 400, error: "BAD_REQUEST", message };
+  }
+
+  if (message.includes("Invalid X-Payment header") || message.includes("Unknown paid endpoint")) {
     return { statusCode: 400, error: "BAD_REQUEST", message };
   }
 
@@ -214,6 +223,7 @@ const server = http.createServer(async (req, res) => {
         version: 1,
         schemes: ["exact"],
         settlementMode: "server-mediated MagicBlock private receipt",
+        payEndpoint: "/api/x402/pay",
         networks: [
           process.env.MAGICBLOCK_CLUSTER === "mainnet" ? "solana-mainnet" : "solana-devnet",
         ],
@@ -269,6 +279,37 @@ const server = http.createServer(async (req, res) => {
       const endpoint = body.endpoint || "/api/mock/weather?city=Singapore";
       const result = await runPrivateFlow(state, adapter, endpoint);
       sendJson(res, 200, result);
+      return;
+    }
+
+    if (req.method === "POST" && pathname === "/api/x402/pay") {
+      const body = await readBody(req);
+      const xPayment = decodeXPayment(req.headers["x-payment"]);
+      const endpoint =
+        body.endpoint ||
+        xPayment?.endpoint ||
+        xPayment?.payload?.endpoint ||
+        xPayment?.paymentRequired?.endpoint ||
+        "/api/live/price?asset=solana&vs=usd";
+      const result = await runPrivatePayOnly(state, adapter, endpoint);
+      sendJson(
+        res,
+        200,
+        {
+          ok: true,
+          ...result,
+        },
+        {
+          "X-Whisper-Payment-Protocol": "x402-compatible",
+          "X-Payment-Response": encodeXPaymentResponse({
+            x402Version: 1,
+            scheme: "receipt-retry",
+            success: true,
+            receiptToken: result.receipt.token,
+            endpoint,
+          }),
+        }
+      );
       return;
     }
 
