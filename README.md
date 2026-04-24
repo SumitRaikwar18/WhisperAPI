@@ -178,6 +178,10 @@ Verified on devnet on `2026-04-24`:
 - live `deposit`
 - live private `transfer`
 - live provider `withdraw`
+- real `POST /api/x402/pay` receipt issuance
+- first receipt redeem succeeds
+- replayed receipt is rejected with `402`
+- client-signed `prepare -> sign locally -> complete -> redeem` flow works
 - paid response unlock after payment
 - persisted receipts and sessions across restarts
 - externalized dashboard runtime via `public/app.js`
@@ -238,7 +242,9 @@ This repo is hackathon-ready, not mainnet-ready.
 
 Known production gaps:
 
-- buyer signing still happens on the server
+- server-signed demo mode still exists for the one-click judge path
+- the preferred no-custody path is `prepare -> client sign -> complete`
+- there is no delegated session-key policy engine yet, so wallet users still sign each prepared checkout flow
 - admin/debug routes should be protected with `WHISPER_ADMIN_TOKEN` on shared deployments
 - state persistence is local, not a multi-user production datastore
 
