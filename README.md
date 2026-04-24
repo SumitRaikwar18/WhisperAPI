@@ -1,16 +1,16 @@
 # WhisperAPI
 
-[![Node.js](https://img.shields.io/badge/node-%3E%3D20-1f6feb?style=for-the-badge&logo=node.js&logoColor=white)](#-quick-start)
-[![Solana](https://img.shields.io/badge/solana-devnet-14f195?style=for-the-badge&logo=solana&logoColor=000)](#-magicblock-devnet)
-[![MagicBlock](https://img.shields.io/badge/magicblock-private%20payments-111827?style=for-the-badge)](#-magicblock-devnet)
-[![x402](https://img.shields.io/badge/x402-compatible-0ea5e9?style=for-the-badge)](#-how-it-works)
-[![Status](https://img.shields.io/badge/status-devnet%20verified-22c55e?style=for-the-badge)](#-verified)
+[![Node.js](https://img.shields.io/badge/node-%3E%3D20-1f6feb?style=for-the-badge&logo=node.js&logoColor=white)](#rocket-quick-start)
+[![Solana](https://img.shields.io/badge/solana-devnet-14f195?style=for-the-badge&logo=solana&logoColor=000)](#globe_with_meridians-magicblock-devnet)
+[![MagicBlock](https://img.shields.io/badge/magicblock-private%20payments-111827?style=for-the-badge)](#globe_with_meridians-magicblock-devnet)
+[![x402](https://img.shields.io/badge/x402-compatible-0ea5e9?style=for-the-badge)](#building_construction-how-it-works)
+[![Status](https://img.shields.io/badge/status-devnet%20verified-22c55e?style=for-the-badge)](#white_check_mark-verified)
 
-🔒 Private checkout for the metered agent economy.
+:lock: Private checkout for the metered agent economy.
 
 WhisperAPI lets AI agents pay for APIs and machine services on Solana without exposing provider choice, spend, or payment cadence on public rails. It uses MagicBlock Private Payments as the actual payment rail and wraps the flow in an x402-compatible `402 -> pay -> retry` pattern.
 
-## ✨ Why This Exists
+## :sparkles: Why This Exists
 
 Public machine payments leak too much:
 
@@ -22,7 +22,7 @@ That turns payments into competitive intelligence.
 
 WhisperAPI fixes that by moving settlement through MagicBlock private payments while keeping the request flow legible for developers and judges.
 
-## 🧠 What The Project Is
+## :brain: What The Project Is
 
 WhisperAPI is:
 
@@ -36,7 +36,7 @@ WhisperAPI is not:
 - a neobank
 - a consumer payments app
 
-## 🏗️ How It Works
+## :building_construction: How It Works
 
 ```mermaid
 flowchart LR
@@ -58,7 +58,7 @@ flowchart LR
     B -->|response| A
 ```
 
-## ⚙️ Flow
+## :gear: Flow
 
 1. An agent calls a paid endpoint.
 2. The endpoint returns `402 Payment Required`.
@@ -69,17 +69,25 @@ flowchart LR
 7. The request is retried with a single-use receipt.
 8. The paid API response is returned.
 
-## 🚀 Quick Start
+## :rocket: Quick Start
 
 ```bash
 npm install
-npm run check:devnet
 npm start
 ```
 
-Open `http://localhost:3000`.
+Open:
 
-## 🌐 MagicBlock Devnet
+- landing page: `http://localhost:3000`
+- live demo console: `http://localhost:3000/dashboard.html`
+
+With live devnet config:
+
+```bash
+npm run check:devnet
+```
+
+## :globe_with_meridians: MagicBlock Devnet
 
 The verified devnet configuration is documented in [docs/WORKING_MAGICBLOCK_CONFIG.md](./docs/WORKING_MAGICBLOCK_CONFIG.md).
 
@@ -101,7 +109,7 @@ WHISPER_PROVIDER_WITHDRAW=true
 
 Environment template: [`.env.example`](./.env.example)
 
-## 📡 API Surface
+## :satellite: API Surface
 
 Routes:
 
@@ -120,9 +128,9 @@ x402-compatible headers:
 - request: `X-Payment`, `X-Payment-Receipt`
 - response: `X-Payment-Response`
 
-## ✅ Verified
+## :white_check_mark: Verified
 
-Verified on devnet on `2026-04-23`:
+Verified on devnet on `2026-04-24`:
 
 - MagicBlock health checks
 - mint initialization checks
@@ -134,8 +142,9 @@ Verified on devnet on `2026-04-23`:
 - live provider `withdraw`
 - paid response unlock after payment
 - persisted receipts and sessions across restarts
+- externalized dashboard runtime via `public/app.js`
 
-## 🧪 Demo Endpoints
+## :test_tube: Demo Endpoints
 
 The demo currently uses live upstream data:
 
@@ -144,7 +153,7 @@ The demo currently uses live upstream data:
 
 This keeps the product understandable in a hackathon setting while still proving a real private payment path.
 
-## 📁 Repo Structure
+## :file_folder: Repo Structure
 
 ```text
 whisperapi/
@@ -176,7 +185,7 @@ whisperapi/
   server.js
 ```
 
-## 📚 Docs
+## :books: Docs
 
 - [Colosseum submission README](./docs/COLOSSEUM_SUBMISSION_README.md)
 - [3-minute demo script](./docs/DEMO_SCRIPT_3MIN.md)
@@ -185,7 +194,7 @@ whisperapi/
 - [Pitch deck](./docs/pitch-deck.html)
 - [Review notes](./docs/REVIEW.md)
 
-## 🔐 Security Notes
+## :lock_with_ink_pen: Security Notes
 
 This repo is hackathon-ready, not mainnet-ready.
 
@@ -195,7 +204,7 @@ Known production gaps:
 - admin/debug routes should be protected with `WHISPER_ADMIN_TOKEN` on shared deployments
 - state persistence is local, not a multi-user production datastore
 
-## 🏁 Track Fit
+## :checkered_flag: Track Fit
 
 For the MagicBlock Frontier track, WhisperAPI fits best as:
 
@@ -203,7 +212,7 @@ For the MagicBlock Frontier track, WhisperAPI fits best as:
 - `Private payments`
 - `Privacy-first infrastructure`
 
-## 🔗 Sources
+## :link: Sources
 
 - MagicBlock private payments template: https://docs.magicblock.gg/pages/templates/private-payments
 - MagicBlock Private Payments API intro: https://docs.magicblock.gg/pages/private-ephemeral-rollups-pers/api-reference/per/introduction
