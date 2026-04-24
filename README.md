@@ -87,6 +87,16 @@ With live devnet config:
 npm run check:devnet
 ```
 
+## :clapper: Judge Mode
+
+The dashboard includes a dedicated judge pass at `http://localhost:3000/dashboard.html`:
+
+- `Run judge demo` selects the strongest endpoint and executes the full private path
+- the checklist confirms `health`, `readiness`, and `deposit -> private-transfer -> withdraw`
+- `Copy proof summary` exports the receipt token and live transaction signatures for narration or submission notes
+
+If `WHISPER_ADMIN_TOKEN` is set on a shared deployment, the dashboard now degrades cleanly and tells the reviewer why trace panels are protected instead of failing silently.
+
 ## :globe_with_meridians: MagicBlock Devnet
 
 The verified devnet configuration is documented in [docs/WORKING_MAGICBLOCK_CONFIG.md](./docs/WORKING_MAGICBLOCK_CONFIG.md).

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>WhisperAPI — Demo Console</title>
+<title>WhisperAPI - Demo Console</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@500;700;800&display=swap" rel="stylesheet"/>
 <style>
@@ -228,6 +228,56 @@ body{
 .status-field-val.red{color:var(--danger)}
 .status-field-val.yellow{color:var(--warn)}
 
+/* JUDGE MODE */
+.judge-card{
+  border:1px solid rgba(0,220,150,0.18);
+  background:linear-gradient(180deg, rgba(0,220,150,0.08), rgba(0,220,150,0.02));
+  border-radius:6px;
+  padding:12px;
+}
+.judge-title{
+  font-size:10px;
+  letter-spacing:0.14em;
+  text-transform:uppercase;
+  color:var(--accent);
+  margin-bottom:8px;
+}
+.judge-copy{
+  color:var(--muted2);
+  font-size:10px;
+  line-height:1.7;
+  margin-bottom:10px;
+}
+.judge-actions{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
+.judge-checklist{display:flex;flex-direction:column;gap:7px;margin-bottom:12px}
+.judge-check{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  font-size:10px;
+  color:var(--muted2);
+}
+.judge-check-dot{
+  width:8px;
+  height:8px;
+  border-radius:50%;
+  background:var(--muted);
+  flex-shrink:0;
+}
+.judge-check.done .judge-check-dot{background:var(--accent)}
+.judge-check.done{color:var(--text)}
+.judge-proof{
+  background:var(--surface2);
+  border:1px solid var(--border);
+  border-radius:4px;
+  padding:10px;
+  color:var(--muted2);
+  font-size:10px;
+  line-height:1.6;
+  white-space:pre-wrap;
+  word-break:break-word;
+}
+
 /* ── MAIN AREA ── */
 .main{
   display:grid;
@@ -245,6 +295,9 @@ body{
   gap:0;
 }
 .tab{
+  appearance:none;
+  background:transparent;
+  border:0;
   font-family:var(--mono);
   font-size:10px;
   letter-spacing:0.1em;
@@ -255,6 +308,11 @@ body{
   border-bottom:2px solid transparent;
   transition:all .15s;
   white-space:nowrap;
+}
+.tab:focus-visible{
+  outline:none;
+  box-shadow:inset 0 -2px 0 var(--accent);
+  color:var(--text);
 }
 .tab:hover{color:var(--text)}
 .tab.active{color:var(--accent);border-bottom-color:var(--accent)}
@@ -467,7 +525,7 @@ body{
     <span id="mode-text">loading...</span>
   </div>
   <div class="topbar-right">
-    <div class="health-pill" id="health-pill">● checking...</div>
+    <div class="health-pill" id="health-pill" role="status" aria-live="polite">checking...</div>
     <span class="topbar-time" id="clock"></span>
   </div>
 </div>
@@ -482,27 +540,44 @@ body{
     <div class="sidebar-section">
       <div class="sidebar-label">Endpoint</div>
       <select class="endpoint-select" id="endpoint-select">
-        <option value="/api/live/weather?city=Singapore">Live weather — Singapore · 0.25 USDC</option>
-        <option value="/api/live/price?asset=solana&vs=usd">Live price — SOL/USD · 0.40 USDC</option>
+        <option value="/api/live/weather?city=Singapore">Live weather - Singapore - 0.25 USDC</option>
+        <option value="/api/live/price?asset=solana&vs=usd">Live price - SOL/USD - 0.40 USDC</option>
       </select>
-      <button class="action-btn primary" id="btn-private" onclick="runFlow('private')">
+      <button class="action-btn primary" id="btn-private" type="button" data-action="run-private">
         <span class="spinner"></span>
-        ▶ Run private flow
+        Run private flow
       </button>
-      <button class="action-btn secondary" id="btn-public" onclick="runFlow('public')">
+      <button class="action-btn secondary" id="btn-public" type="button" data-action="run-public">
         <span class="spinner"></span>
-        ◈ Run public flow
+        Run public flow
       </button>
-      <button class="action-btn ghost" onclick="resetDemo()">↺ Reset demo</button>
+      <button class="action-btn ghost" type="button" data-action="reset-demo">Reset demo</button>
+    </div>
+
+    <!-- JUDGE MODE -->
+    <div class="sidebar-section">
+      <div class="sidebar-label">Judge mode</div>
+      <div class="judge-card">
+        <div class="judge-title">One-click proof</div>
+        <div class="judge-copy">Run the strongest private flow, verify the three payment steps, and copy a concise proof summary for judges.</div>
+        <div class="judge-actions">
+          <button class="action-btn primary" id="btn-judge" type="button" data-action="judge-demo">Run judge demo</button>
+          <button class="action-btn ghost" type="button" data-action="copy-proof">Copy proof summary</button>
+        </div>
+        <div class="judge-checklist" id="judge-checklist">
+          <div class="judge-check"><span class="judge-check-dot"></span><span>Waiting for integration status</span></div>
+        </div>
+        <div class="judge-proof" id="judge-proof" aria-live="polite">Run the private flow to capture real signatures and response proof.</div>
+      </div>
     </div>
 
     <!-- LEGEND -->
     <div class="sidebar-section">
       <div class="sidebar-label">Legend</div>
       <div class="legend">
-        <div class="legend-item"><span class="legend-dot private"></span>Private — concealed inside PER</div>
-        <div class="legend-item"><span class="legend-dot public"></span>Public — visible on Solana</div>
-        <div class="legend-item"><span class="legend-dot system"></span>System — session / receipt events</div>
+        <div class="legend-item"><span class="legend-dot private"></span>Private - concealed inside PER</div>
+        <div class="legend-item"><span class="legend-dot public"></span>Public - visible on Solana</div>
+        <div class="legend-item"><span class="legend-dot system"></span>System - session / receipt events</div>
       </div>
     </div>
 
@@ -510,14 +585,14 @@ body{
     <div class="sidebar-section" style="flex:1">
       <div class="sidebar-label">Integration</div>
       <div id="status-fields">
-        <div class="status-field"><span class="status-field-key">mode</span><span class="status-field-val" id="sf-mode">—</span></div>
-        <div class="status-field"><span class="status-field-key">ready</span><span class="status-field-val" id="sf-ready">—</span></div>
-        <div class="status-field"><span class="status-field-key">health</span><span class="status-field-val" id="sf-health">—</span></div>
-        <div class="status-field"><span class="status-field-key">cluster</span><span class="status-field-val" id="sf-cluster">—</span></div>
-        <div class="status-field"><span class="status-field-key">mint init</span><span class="status-field-val" id="sf-mint">—</span></div>
-        <div class="status-field"><span class="status-field-key">buyer</span><span class="status-field-val" id="sf-buyer">—</span></div>
-        <div class="status-field"><span class="status-field-key">provider</span><span class="status-field-val" id="sf-provider">—</span></div>
-        <div class="status-field"><span class="status-field-key">withdraw</span><span class="status-field-val" id="sf-withdraw">—</span></div>
+        <div class="status-field"><span class="status-field-key">mode</span><span class="status-field-val" id="sf-mode">-</span></div>
+        <div class="status-field"><span class="status-field-key">ready</span><span class="status-field-val" id="sf-ready">-</span></div>
+        <div class="status-field"><span class="status-field-key">health</span><span class="status-field-val" id="sf-health">-</span></div>
+        <div class="status-field"><span class="status-field-key">cluster</span><span class="status-field-val" id="sf-cluster">-</span></div>
+        <div class="status-field"><span class="status-field-key">mint init</span><span class="status-field-val" id="sf-mint">-</span></div>
+        <div class="status-field"><span class="status-field-key">buyer</span><span class="status-field-val" id="sf-buyer">-</span></div>
+        <div class="status-field"><span class="status-field-key">provider</span><span class="status-field-val" id="sf-provider">-</span></div>
+        <div class="status-field"><span class="status-field-key">withdraw</span><span class="status-field-val" id="sf-withdraw">-</span></div>
       </div>
     </div>
 
@@ -527,17 +602,17 @@ body{
   <div class="main">
 
     <!-- TABS -->
-    <div class="tabs">
-      <div class="tab active" onclick="switchTab('flow')" id="tab-flow">Flow result</div>
-      <div class="tab" onclick="switchTab('observer')" id="tab-observer">Observer panels</div>
-      <div class="tab" onclick="switchTab('steps')" id="tab-steps">Payment steps</div>
+    <div class="tabs" role="tablist" aria-label="Demo views">
+      <button class="tab active" type="button" data-tab="flow" id="tab-flow" role="tab" aria-selected="true" aria-controls="panel-flow">Flow result</button>
+      <button class="tab" type="button" data-tab="observer" id="tab-observer" role="tab" aria-selected="false" aria-controls="panel-observer">Observer panels</button>
+      <button class="tab" type="button" data-tab="steps" id="tab-steps" role="tab" aria-selected="false" aria-controls="panel-steps">Payment steps</button>
     </div>
 
     <!-- PANELS -->
     <div class="panels">
 
       <!-- FLOW RESULT -->
-      <div class="panel active" id="panel-flow">
+      <div class="panel active" id="panel-flow" role="tabpanel" aria-labelledby="tab-flow">
         <div class="pane">
           <div class="pane-header">
             <span class="pane-title-text">Latest result</span>
@@ -554,7 +629,7 @@ body{
           </div>
           <div class="pane-body" id="receipts-list">
             <div class="empty-state">
-              <div class="empty-icon">⬡</div>
+              <div class="empty-icon">[]</div>
               <span class="empty-text">No receipts yet</span>
             </div>
           </div>
@@ -562,7 +637,7 @@ body{
       </div>
 
       <!-- OBSERVER PANELS -->
-      <div class="panel" id="panel-observer">
+      <div class="panel" id="panel-observer" role="tabpanel" aria-labelledby="tab-observer">
         <div class="pane">
           <div class="pane-header">
             <span class="pane-title-text">Public chain view</span>
@@ -570,7 +645,7 @@ body{
           </div>
           <div class="pane-body" id="public-ledger">
             <div class="empty-state">
-              <div class="empty-icon">◈</div>
+              <div class="empty-icon">()</div>
               <span class="empty-text">No public events yet</span>
             </div>
           </div>
@@ -582,7 +657,7 @@ body{
           </div>
           <div class="pane-body" id="private-ledger">
             <div class="empty-state">
-              <div class="empty-icon">▣</div>
+              <div class="empty-icon">##</div>
               <span class="empty-text">No private events yet</span>
             </div>
           </div>
@@ -590,7 +665,7 @@ body{
       </div>
 
       <!-- PAYMENT STEPS -->
-      <div class="panel" id="panel-steps">
+      <div class="panel" id="panel-steps" role="tabpanel" aria-labelledby="tab-steps">
         <div class="pane" style="border-right:none">
           <div class="pane-header">
             <span class="pane-title-text">Payment step trace</span>
@@ -602,19 +677,19 @@ body{
                 <span class="step-row-name" style="color:var(--muted)">deposit</span>
                 <span class="step-row-status pending">pending</span>
                 <span class="step-row-detail" style="color:var(--muted)">awaiting run</span>
-                <span class="step-row-net">—</span>
+                <span class="step-row-net">-</span>
               </div>
               <div class="step-row">
                 <span class="step-row-name" style="color:var(--muted)">private-transfer</span>
                 <span class="step-row-status pending">pending</span>
                 <span class="step-row-detail" style="color:var(--muted)">awaiting run</span>
-                <span class="step-row-net">—</span>
+                <span class="step-row-net">-</span>
               </div>
               <div class="step-row">
                 <span class="step-row-name" style="color:var(--muted)">withdraw</span>
                 <span class="step-row-status pending">pending</span>
                 <span class="step-row-detail" style="color:var(--muted)">awaiting run</span>
-                <span class="step-row-net">—</span>
+                <span class="step-row-net">-</span>
               </div>
             </div>
 
@@ -634,9 +709,10 @@ body{
 </div>
 
 <!-- TOAST -->
-<div id="toast"></div>
+<div id="toast" role="status" aria-live="polite"></div>
 
 <script src="/app.js"></script>
 </body>
 </html>
+
 
