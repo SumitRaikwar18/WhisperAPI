@@ -11,6 +11,8 @@
     lastPrivateResult: null,
     latestStatus: null,
     protectionToastShown: false,
+    walletPublicKey: null,
+    walletProviderDetected: false,
   };
 
   function byId(id) {
@@ -61,6 +63,16 @@
     showToast._timer = setTimeout(() => {
       toast.className = "";
     }, 2600);
+  }
+
+  function getWalletProvider() {
+    const provider = window.solana;
+
+    if (!provider || typeof provider.signTransaction !== "function") {
+      return null;
+    }
+
+    return provider;
   }
 
   function syntaxHighlight(value) {
@@ -168,6 +180,38 @@
     return value ? `${value.slice(0, 8)}...` : "not set";
   }
 
+  function updateWalletPanel() {
+    const proof = byId("wallet-proof");
+    const copy = byId("wallet-copy");
+    const connectButton = byId("btn-wallet-connect");
+    const runButton = byId("btn-wallet-private");
+    const provider = getWalletProvider();
+
+    state.walletProviderDetected = Boolean(provider);
+
+    if (copy) {
+      copy.textContent = provider
+        ? "Sign MagicBlock payment transactions in your wallet. WhisperAPI prepares unsigned buyer steps and only issues the receipt after your signed checkout is finalized."
+        : "Install a Solana wallet that exposes window.solana to run the no-custody checkout path locally.";
+    }
+
+    if (proof) {
+      proof.textContent = provider
+        ? `wallet: ${state.walletPublicKey ? shortKey(state.walletPublicKey) : "detected, not connected"}`
+        : "wallet: provider not detected";
+    }
+
+    if (connectButton) {
+      connectButton.textContent = state.walletPublicKey ? "Wallet connected" : "Connect wallet";
+    }
+
+    if (runButton) {
+      runButton.disabled = !provider;
+      runButton.style.opacity = provider ? "1" : "0.55";
+      runButton.style.cursor = provider ? "pointer" : "not-allowed";
+    }
+  }
+
   function summarizeProof() {
     if (!state.lastPrivateResult) {
       if (state.latestStatus?.statusProtected) {
@@ -191,6 +235,7 @@
       `transfer: ${transfer?.signature || transfer?.status || "-"}`,
       `withdraw: ${withdraw?.signature || withdraw?.status || "-"}`,
       `receipt: ${state.lastPrivateResult.receipt?.token || "-"}`,
+      `buyer: ${state.walletPublicKey ? shortKey(state.walletPublicKey) : "server-signed fallback"}`,
     ].join("\n");
   }
 
@@ -308,6 +353,7 @@
     }
 
     updateJudgePanel();
+    updateWalletPanel();
   }
 
   async function loadCatalog() {
@@ -350,6 +396,24 @@
       setStatusField("sf-mode", "error", "red");
       updateJudgePanel();
     }
+  }
+
+  async function connectWallet() {
+    const provider = getWalletProvider();
+
+    if (!provider) {
+      showToast("No Solana wallet provider found", "error");
+      updateWalletPanel();
+      return null;
+    }
+
+    const response = await provider.connect();
+    state.walletPublicKey = response.publicKey?.toBase58
+      ? response.publicKey.toBase58()
+      : String(response.publicKey || "");
+    updateWalletPanel();
+    showToast("Wallet connected", "success");
+    return state.walletPublicKey;
   }
 
   function renderEventCards(items, containerId) {
@@ -618,6 +682,145 @@
     }
   }
 
+  function deserializePreparedTransaction(step) {
+    const buffer = Uint8Array.from(atob(step.transactionBase64), (char) => char.charCodeAt(0));
+
+    if (step.version && step.version !== "legacy") {
+      return window.solanaWeb3.VersionedTransaction.deserialize(buffer);
+    }
+
+    return window.solanaWeb3.Transaction.from(buffer);
+  }
+
+  async function signPreparedSteps(signingSteps) {
+    const provider = getWalletProvider();
+
+    if (!provider) {
+      throw new Error("Wallet provider not available.");
+    }
+
+    const signedSteps = [];
+
+    for (const step of signingSteps) {
+      const transaction = deserializePreparedTransaction(step);
+      const signed = await provider.signTransaction(transaction);
+      const serialized = signed.serialize();
+      const bytes = serialized instanceof Uint8Array ? serialized : new Uint8Array(serialized);
+      const base64 = btoa(String.fromCharCode(...bytes));
+
+      signedSteps.push({
+        step: step.step,
+        signedTransactionBase64: base64,
+      });
+    }
+
+    return signedSteps;
+  }
+
+  async function runClientSignedFlow() {
+    if (state.running) {
+      return;
+    }
+
+    if (!window.solanaWeb3) {
+      showToast("solanaWeb3 bundle not loaded", "error");
+      return;
+    }
+
+    state.running = true;
+    const button = byId("btn-wallet-private");
+    const endpoint = byId("endpoint-select")?.value || DEFAULT_JUDGE_ENDPOINT;
+    const badge = byId("result-badge");
+    const resultOut = byId("result-out");
+
+    if (button) {
+      button.classList.add("loading");
+    }
+
+    if (badge) {
+      badge.textContent = "wallet signing...";
+      badge.className = "pane-badge private";
+    }
+
+    if (resultOut) {
+      resultOut.innerHTML =
+        '<span style="color:var(--muted)">// preparing unsigned checkout and requesting wallet signatures...</span>';
+    }
+
+    try {
+      const buyerPublicKey = state.walletPublicKey || (await connectWallet());
+      const prepared = await fetchJson("/api/x402/pay/prepare", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          endpoint,
+          buyerPublicKey,
+        }),
+      });
+
+      const signedSteps = await signPreparedSteps(prepared.signingSteps || []);
+      const completed = await fetchJson("/api/x402/pay/complete", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          sessionId: prepared.session.id,
+          signedSteps,
+        }),
+      });
+
+      const redeemed = await fetchJson(endpoint, {
+        headers: {
+          "X-Payment-Receipt": completed.receipt.token,
+        },
+      });
+
+      const payload = {
+        mode: "private-client",
+        paymentRequired: prepared.paymentRequired,
+        session: completed.session,
+        receipt: completed.receipt,
+        paymentSteps: completed.paymentSteps,
+        response: redeemed,
+      };
+
+      state.lastResult = payload;
+      state.lastPrivateResult = payload;
+      state.steps = payload.paymentSteps || [];
+
+      if (resultOut) {
+        resultOut.innerHTML = syntaxHighlight(payload);
+      }
+
+      if (badge) {
+        badge.textContent = "client-signed | ok";
+        badge.className = "pane-badge private";
+      }
+
+      switchTab("steps");
+      await refreshState();
+      showToast("Client-signed flow complete", "success");
+    } catch (error) {
+      if (resultOut) {
+        resultOut.innerHTML = `<span style="color:var(--danger)">// error: ${error.message}</span>`;
+      }
+
+      showToast(`Client-signed flow failed: ${error.message}`, "error");
+    } finally {
+      state.running = false;
+
+      if (button) {
+        button.classList.remove("loading");
+      }
+
+      updateJudgePanel();
+      updateWalletPanel();
+    }
+  }
+
   async function resetDemo() {
     await fetchJson("/api/reset", { method: "POST" });
     state.steps = [];
@@ -662,6 +865,10 @@
   }
 
   function bindEvents() {
+    document.querySelector('[data-action="connect-wallet"]')?.addEventListener("click", connectWallet);
+    document.querySelector('[data-action="run-client-private"]')?.addEventListener("click", () => {
+      runClientSignedFlow();
+    });
     document.querySelector('[data-action="run-private"]')?.addEventListener("click", () => {
       runFlow("private");
     });
@@ -693,10 +900,13 @@
   window.resetDemo = resetDemo;
   window.runJudgeDemo = runJudgeDemo;
   window.copyJudgeProof = copyJudgeProof;
+  window.connectWallet = connectWallet;
+  window.runClientSignedFlow = runClientSignedFlow;
 
   bindEvents();
   switchTab("flow");
   tickClock();
+  updateWalletPanel();
   setInterval(tickClock, 1000);
 
   (async function init() {

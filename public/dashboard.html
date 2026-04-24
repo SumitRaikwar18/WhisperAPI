@@ -536,6 +536,20 @@ body{
   <!-- SIDEBAR -->
   <div class="sidebar">
 
+    <!-- WALLET -->
+    <div class="sidebar-section">
+      <div class="sidebar-label">Buyer wallet</div>
+      <div class="judge-card" style="border-color:rgba(0,112,243,0.18);background:linear-gradient(180deg, rgba(0,112,243,0.1), rgba(0,112,243,0.02))">
+        <div class="judge-title" style="color:var(--accent2)">Client-signed path</div>
+        <div class="judge-copy" id="wallet-copy">Connect a Solana wallet to run the no-custody checkout path. Buyer signatures stay client-side; WhisperAPI only prepares and finalizes the payment session.</div>
+        <div class="judge-actions">
+          <button class="action-btn secondary" id="btn-wallet-connect" type="button" data-action="connect-wallet">Connect wallet</button>
+          <button class="action-btn primary" id="btn-wallet-private" type="button" data-action="run-client-private">Run client-signed flow</button>
+        </div>
+        <div class="judge-proof" id="wallet-proof">wallet: not connected</div>
+      </div>
+    </div>
+
     <!-- CONTROLS -->
     <div class="sidebar-section">
       <div class="sidebar-label">Endpoint</div>
@@ -711,6 +725,7 @@ body{
 <!-- TOAST -->
 <div id="toast" role="status" aria-live="polite"></div>
 
+<script src="/vendor/solana-web3.iife.min.js"></script>
 <script src="/app.js"></script>
 </body>
 </html>

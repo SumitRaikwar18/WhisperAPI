@@ -6,6 +6,7 @@ const {
   VersionedTransaction,
   clusterApiUrl,
 } = require("@solana/web3.js");
+const crypto = require("node:crypto");
 const rawBs58 = require("bs58");
 const bs58 = rawBs58.default || rawBs58;
 const nacl = require("tweetnacl");
@@ -167,6 +168,28 @@ function signTransaction(transaction, signer) {
   return transaction.serialize();
 }
 
+function messageBytes(transaction) {
+  if (transaction instanceof VersionedTransaction) {
+    return Buffer.from(transaction.message.serialize());
+  }
+
+  return Buffer.from(transaction.serializeMessage());
+}
+
+function messageHashFromBuilder(builderResponse) {
+  const transaction = deserializeTransaction(builderResponse);
+  return crypto.createHash("sha256").update(messageBytes(transaction)).digest("hex");
+}
+
+function messageHashFromSigned(base64, versionHint) {
+  const buffer = Buffer.from(base64, "base64");
+  const transaction =
+    versionHint && versionHint !== "legacy"
+      ? VersionedTransaction.deserialize(buffer)
+      : Transaction.from(buffer);
+  return crypto.createHash("sha256").update(messageBytes(transaction)).digest("hex");
+}
+
 class DemoPrivatePaymentsAdapter {
   constructor(state) {
     this.state = state;
@@ -218,6 +241,53 @@ class DemoPrivatePaymentsAdapter {
       reason: "Demo mode keeps provider settlement simulated.",
     };
   }
+
+  async prepareClientCheckout(session, buyerPublicKey) {
+    const signingSteps = ["deposit", "private-transfer"].map((step) => ({
+      step,
+      buyerPublicKey,
+      sendTo: step === "deposit" ? "base" : "ephemeral",
+      network: step === "deposit" ? "Solana base" : "MagicBlock PER",
+      version: "legacy",
+      transactionBase64: Buffer.from(`${step}:${session.id}`).toString("base64"),
+      messageHash: crypto.createHash("sha256").update(`${step}:${session.id}`).digest("hex"),
+    }));
+
+    session.status = "AWAITING_BUYER_SIGNATURES";
+    session.clientSigning = {
+      buyerPublicKey,
+      preparedAt: new Date().toISOString(),
+      expiresAt: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
+      signingSteps,
+    };
+
+    return {
+      session,
+      signingSteps,
+    };
+  }
+
+  async completeClientCheckout(session, signedSteps) {
+    const signedMap = new Map((signedSteps || []).map((step) => [step.step, step]));
+    const paymentSteps = (session.clientSigning?.signingSteps || []).map((step) => ({
+      step: step.step,
+      status: signedMap.has(step.step) ? "SUCCESS" : "ERROR",
+      sessionId: session.id,
+      network: step.network,
+      sendTo: step.sendTo,
+      signature: signedMap.get(step.step)?.signature || `demo_${step.step}_${session.id}`,
+    }));
+
+    return {
+      paymentSteps,
+      withdrawResult: {
+        step: "withdraw",
+        status: "SKIPPED",
+        sessionId: session.id,
+        reason: "Demo mode keeps provider settlement simulated.",
+      },
+    };
+  }
 }
 
 class MagicBlockPrivatePaymentsAdapter {
@@ -240,6 +310,7 @@ class MagicBlockPrivatePaymentsAdapter {
     this.providerWithdrawEnabled =
       process.env.WHISPER_PROVIDER_WITHDRAW === "true" && !!this.providerSigner;
     this.memoPrefix = process.env.WHISPER_MEMO_PREFIX || "WhisperAPI";
+    this.sessionTtlMs = Number(process.env.WHISPER_SESSION_TTL_MS || `${10 * 60 * 1000}`);
     this.teeRpcUrl =
       process.env.MAGICBLOCK_TEE_RPC_URL ||
       (this.cluster === "mainnet" ? MAINNET_TEE_RPC : DEVNET_TEE_RPC);
@@ -285,11 +356,41 @@ class MagicBlockPrivatePaymentsAdapter {
     return missing;
   }
 
+  requiredClientSigningEnv() {
+    const missing = [];
+
+    if (!this.providerDestination) {
+      missing.push("WHISPER_PROVIDER_DESTINATION or WHISPER_PROVIDER_SECRET");
+    }
+
+    if (this.providerWithdrawEnabled && !this.providerSigner) {
+      missing.push("WHISPER_PROVIDER_SECRET");
+    }
+
+    if (
+      this.providerWithdrawEnabled &&
+      this.providerSigner &&
+      this.providerDestination !== this.providerSigner.publicKey.toBase58()
+    ) {
+      missing.push("WHISPER_PROVIDER_DESTINATION must match WHISPER_PROVIDER_SECRET public key");
+    }
+
+    return missing;
+  }
+
   assertReady() {
     const missing = this.requiredEnv();
 
     if (missing.length) {
       throw new Error(`Live MagicBlock integration is not ready: ${missing.join(", ")}`);
+    }
+  }
+
+  assertClientFlowReady() {
+    const missing = this.requiredClientSigningEnv();
+
+    if (missing.length) {
+      throw new Error(`Client-signed MagicBlock integration is not ready: ${missing.join(", ")}`);
     }
   }
 
@@ -354,12 +455,16 @@ class MagicBlockPrivatePaymentsAdapter {
     return this.apiGet("/health");
   }
 
-  async ensureMintInitialized() {
-    const existing = await this.apiGet("/v1/spl/is-mint-initialized", {
+  async mintInitializationStatus() {
+    return this.apiGet("/v1/spl/is-mint-initialized", {
       mint: this.mint,
       cluster: this.cluster,
       validator: this.validator,
     });
+  }
+
+  async ensureMintInitialized() {
+    const existing = await this.mintInitializationStatus();
 
     if (existing.initialized) {
       return {
@@ -383,6 +488,49 @@ class MagicBlockPrivatePaymentsAdapter {
       transferQueue: existing.transferQueue || null,
       signature,
     };
+  }
+
+  async buildInitializeMintBuilder(ownerPublicKey) {
+    return this.apiPost("/v1/spl/initialize-mint", {
+      payer: ownerPublicKey,
+      owner: ownerPublicKey,
+      mint: this.mint,
+      cluster: this.cluster,
+      validator: this.validator,
+    });
+  }
+
+  async buildDepositBuilder(ownerPublicKey, amount) {
+    return this.apiPost("/v1/spl/deposit", {
+      owner: ownerPublicKey,
+      amount,
+      cluster: this.cluster,
+      mint: this.mint,
+      validator: this.validator,
+      initIfMissing: true,
+      initVaultIfMissing: true,
+      initAtasIfMissing: true,
+      idempotent: true,
+    });
+  }
+
+  async buildTransferBuilder(ownerPublicKey, session, amount) {
+    const memo = `${this.memoPrefix}:${session.id}:${session.itemLabel}`;
+    return this.apiPost("/v1/spl/transfer", {
+      from: ownerPublicKey,
+      to: this.providerDestination,
+      fromBalance: "ephemeral",
+      toBalance: "ephemeral",
+      visibility: "private",
+      owner: ownerPublicKey,
+      destination: this.providerDestination,
+      amount,
+      cluster: this.cluster,
+      mint: this.mint,
+      privacy: "private",
+      validator: this.validator,
+      memo,
+    });
   }
 
   async getAuthTokenForSigner(signer) {
@@ -439,6 +587,47 @@ class MagicBlockPrivatePaymentsAdapter {
     }
   }
 
+  async submitClientSignedTransaction(builderResponse, signedTransactionBase64) {
+    const expectedHash = messageHashFromBuilder(builderResponse);
+    const actualHash = messageHashFromSigned(
+      signedTransactionBase64,
+      builderResponse.version
+    );
+
+    if (expectedHash !== actualHash) {
+      throw new Error(`Signed transaction does not match prepared builder for step=${builderResponse.kind}`);
+    }
+
+    const connection = this.connectionForSendTarget(builderResponse.sendTo);
+    const serialized = Buffer.from(signedTransactionBase64, "base64");
+
+    try {
+      const signature = await connection.sendRawTransaction(serialized, {
+        skipPreflight: builderResponse.sendTo === "ephemeral",
+        maxRetries: 3,
+      });
+
+      if (builderResponse.recentBlockhash && builderResponse.lastValidBlockHeight) {
+        await connection.confirmTransaction(
+          {
+            blockhash: builderResponse.recentBlockhash,
+            lastValidBlockHeight: builderResponse.lastValidBlockHeight,
+            signature,
+          },
+          "confirmed"
+        );
+      } else {
+        await connection.confirmTransaction(signature, "confirmed");
+      }
+
+      return signature;
+    } catch (error) {
+      throw new Error(
+        `Client-signed transaction submission failed for kind=${builderResponse.kind} sendTo=${builderResponse.sendTo}: ${error.message}`
+      );
+    }
+  }
+
   async getBalanceSnapshot() {
     const result = {};
     const errors = [];
@@ -483,17 +672,14 @@ class MagicBlockPrivatePaymentsAdapter {
   }
 
   async getStatus() {
-    const missing = this.requiredEnv();
+    const serverMissing = this.requiredEnv();
+    const clientMissing = this.requiredClientSigningEnv();
     const health = await this.health();
-    const mintStatus = await this.apiGet("/v1/spl/is-mint-initialized", {
-      mint: this.mint,
-      cluster: this.cluster,
-      validator: this.validator,
-    });
+    const mintStatus = await this.mintInitializationStatus();
     let balances = {};
     let balanceError = null;
 
-    if (!missing.length) {
+    if (!serverMissing.length) {
       try {
         const balanceSnapshot = await this.getBalanceSnapshot();
         balances = balanceSnapshot.balances;
@@ -507,7 +693,9 @@ class MagicBlockPrivatePaymentsAdapter {
 
     return {
       mode: "magicblock-live",
-      ready: missing.length === 0,
+      ready: serverMissing.length === 0 || clientMissing.length === 0,
+      serverSignedReady: serverMissing.length === 0,
+      clientSigningReady: clientMissing.length === 0,
       apiBase: MAGICBLOCK_API_BASE,
       cluster: this.cluster,
       validator: this.validator,
@@ -521,7 +709,7 @@ class MagicBlockPrivatePaymentsAdapter {
       health: health.status,
       mintInitialized: mintStatus.initialized,
       transferQueue: mintStatus.transferQueue || null,
-      missing,
+      missing: Array.from(new Set([...serverMissing, ...clientMissing])),
       balances,
       balanceError,
     };
@@ -547,17 +735,7 @@ class MagicBlockPrivatePaymentsAdapter {
     this.assertWithinSpendCap(session);
     const amount = toMinorUnits(session.amount, this.decimals);
     await this.ensureMintInitialized();
-    const builder = await this.apiPost("/v1/spl/deposit", {
-      owner: this.buyerSigner.publicKey.toBase58(),
-      amount,
-      cluster: this.cluster,
-      mint: this.mint,
-      validator: this.validator,
-      initIfMissing: true,
-      initVaultIfMissing: true,
-      initAtasIfMissing: true,
-      idempotent: true,
-    });
+    const builder = await this.buildDepositBuilder(this.buyerSigner.publicKey.toBase58(), amount);
     const signature = await this.submitBuiltTransaction(builder, this.buyerSigner);
 
     return this.buildStepResult("deposit", session, builder, signature, {
@@ -569,22 +747,11 @@ class MagicBlockPrivatePaymentsAdapter {
     this.assertReady();
     this.assertWithinSpendCap(session);
     const amount = toMinorUnits(session.amount, this.decimals);
-    const memo = `${this.memoPrefix}:${session.id}:${session.itemLabel}`;
-    const builder = await this.apiPost("/v1/spl/transfer", {
-      from: this.buyerSigner.publicKey.toBase58(),
-      to: this.providerDestination,
-      fromBalance: "ephemeral",
-      toBalance: "ephemeral",
-      visibility: "private",
-      owner: this.buyerSigner.publicKey.toBase58(),
-      destination: this.providerDestination,
-      amount,
-      cluster: this.cluster,
-      mint: this.mint,
-      privacy: "private",
-      validator: this.validator,
-      memo,
-    });
+    const builder = await this.buildTransferBuilder(
+      this.buyerSigner.publicKey.toBase58(),
+      session,
+      amount
+    );
     const signature = await this.submitBuiltTransaction(builder, this.buyerSigner);
 
     return this.buildStepResult("private-transfer", session, builder, signature, {
@@ -619,6 +786,130 @@ class MagicBlockPrivatePaymentsAdapter {
       amountMinor: amount,
       destination: this.providerDestination,
     });
+  }
+
+  async prepareClientCheckout(session, buyerPublicKey) {
+    this.assertClientFlowReady();
+    this.assertWithinSpendCap(session);
+
+    const amount = toMinorUnits(session.amount, this.decimals);
+    const mintStatus = await this.mintInitializationStatus();
+    const signingSteps = [];
+
+    if (!mintStatus.initialized) {
+      const initBuilder = await this.buildInitializeMintBuilder(buyerPublicKey);
+      signingSteps.push({
+        step: "initialize-mint",
+        network: "Solana base",
+        sendTo: initBuilder.sendTo,
+        version: initBuilder.version || "legacy",
+        transactionBase64: initBuilder.transactionBase64,
+        recentBlockhash: initBuilder.recentBlockhash || null,
+        lastValidBlockHeight: initBuilder.lastValidBlockHeight || null,
+        validator: initBuilder.validator || this.validator,
+        messageHash: messageHashFromBuilder(initBuilder),
+      });
+    }
+
+    const depositBuilder = await this.buildDepositBuilder(buyerPublicKey, amount);
+    signingSteps.push({
+      step: "deposit",
+      network: "Solana base",
+      sendTo: depositBuilder.sendTo,
+      version: depositBuilder.version || "legacy",
+      transactionBase64: depositBuilder.transactionBase64,
+      recentBlockhash: depositBuilder.recentBlockhash || null,
+      lastValidBlockHeight: depositBuilder.lastValidBlockHeight || null,
+      validator: depositBuilder.validator || this.validator,
+      messageHash: messageHashFromBuilder(depositBuilder),
+    });
+
+    const transferBuilder = await this.buildTransferBuilder(buyerPublicKey, session, amount);
+    signingSteps.push({
+      step: "private-transfer",
+      network: "MagicBlock PER",
+      sendTo: transferBuilder.sendTo,
+      version: transferBuilder.version || "legacy",
+      transactionBase64: transferBuilder.transactionBase64,
+      recentBlockhash: transferBuilder.recentBlockhash || null,
+      lastValidBlockHeight: transferBuilder.lastValidBlockHeight || null,
+      validator: transferBuilder.validator || this.validator,
+      messageHash: messageHashFromBuilder(transferBuilder),
+    });
+
+    session.status = "AWAITING_BUYER_SIGNATURES";
+    session.clientSigning = {
+      buyerPublicKey,
+      preparedAt: new Date().toISOString(),
+      expiresAt: new Date(Date.now() + this.sessionTtlMs).toISOString(),
+      signingSteps,
+    };
+
+    return {
+      session,
+      signingSteps,
+    };
+  }
+
+  async completeClientCheckout(session, signedSteps) {
+    this.assertClientFlowReady();
+
+    if (!session.clientSigning) {
+      throw new Error(`Session ${session.id} is not prepared for client signing.`);
+    }
+
+    if (new Date(session.clientSigning.expiresAt).getTime() < Date.now()) {
+      throw new Error(`Session ${session.id} expired before client-signed completion.`);
+    }
+
+    const expectedSteps = session.clientSigning.signingSteps || [];
+    const signedMap = new Map((signedSteps || []).map((step) => [step.step, step]));
+    const paymentSteps = [];
+
+    for (const prepared of expectedSteps) {
+      const signed = signedMap.get(prepared.step);
+
+      if (!signed?.signedTransactionBase64) {
+        throw new Error(`Missing signed transaction for step=${prepared.step}`);
+      }
+
+      const builderResponse = {
+        kind: prepared.step,
+        sendTo: prepared.sendTo,
+        version: prepared.version,
+        transactionBase64: prepared.transactionBase64,
+        recentBlockhash: prepared.recentBlockhash,
+        lastValidBlockHeight: prepared.lastValidBlockHeight,
+        validator: prepared.validator,
+      };
+
+      const signature = await this.submitClientSignedTransaction(
+        builderResponse,
+        signed.signedTransactionBase64
+      );
+
+      paymentSteps.push({
+        step: prepared.step,
+        status: "SUCCESS",
+        sessionId: session.id,
+        network: prepared.network,
+        validator: prepared.validator,
+        signature,
+        sendTo: prepared.sendTo,
+        recentBlockhash: prepared.recentBlockhash,
+        lastValidBlockHeight: prepared.lastValidBlockHeight,
+      });
+    }
+
+    const withdrawResult = await this.withdraw(session);
+    session.status = "PAID";
+    session.clientSigning.completedAt = new Date().toISOString();
+    delete session.clientSigning.signingSteps;
+
+    return {
+      paymentSteps,
+      withdrawResult,
+    };
   }
 }
 

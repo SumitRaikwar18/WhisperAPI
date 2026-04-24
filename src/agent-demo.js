@@ -10,7 +10,11 @@ const {
   recordFlowRun,
   persistState,
 } = require("./app-state");
-const { runPrivateCheckout } = require("./whisper-engine");
+const {
+  runPrivateCheckout,
+  prepareClientCheckout,
+  completeClientCheckout,
+} = require("./whisper-engine");
 
 function verifyReceipt(state, token, endpoint) {
   const found = state.receipts.find(
@@ -118,6 +122,57 @@ async function runPrivatePayOnly(state, adapter, endpoint) {
   };
 }
 
+async function preparePrivateClientFlow(state, adapter, endpoint, buyerPublicKey) {
+  const paymentRequired = buildPaymentRequiredForEndpoint(endpoint);
+
+  if (!paymentRequired) {
+    throw new Error(`Unknown paid endpoint: ${endpoint}`);
+  }
+
+  const checkout = await prepareClientCheckout(state, adapter, paymentRequired, buyerPublicKey);
+
+  recordFlowRun(state, {
+    mode: "private-client-prepare",
+    endpoint,
+    itemLabel: paymentRequired.itemLabel,
+    status: 200,
+    responseSummary: "Unsigned buyer steps prepared",
+  });
+
+  return {
+    mode: "private-client-prepare",
+    paymentRequired,
+    session: checkout.session,
+    signingSteps: checkout.signingSteps,
+    buyerPublicKey,
+  };
+}
+
+async function completePrivateClientFlow(state, adapter, sessionId, signedSteps) {
+  const session = state.sessions.find((item) => item.id === sessionId);
+
+  if (!session) {
+    throw new Error(`Unknown paid endpoint session: ${sessionId}`);
+  }
+
+  const checkout = await completeClientCheckout(state, adapter, session, signedSteps);
+
+  recordFlowRun(state, {
+    mode: "private-client-complete",
+    endpoint: session.endpoint,
+    itemLabel: session.itemLabel,
+    status: 200,
+    responseSummary: "Client-signed private payment completed",
+  });
+
+  return {
+    mode: "private-client-complete",
+    session: checkout.session,
+    receipt: checkout.receipt,
+    paymentSteps: checkout.steps,
+  };
+}
+
 async function runPublicFlow(state, endpoint) {
   const buyer = "agent://demo-buyer";
   const firstResponse = await accessPaidApi(state, endpoint, null);
@@ -174,6 +229,8 @@ async function runPublicFlow(state, endpoint) {
 }
 
 module.exports = {
+  completePrivateClientFlow,
+  preparePrivateClientFlow,
   runPrivateFlow,
   runPrivatePayOnly,
   runPublicFlow,

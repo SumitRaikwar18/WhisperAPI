@@ -16,6 +16,8 @@ const { createPaymentAdapter } = require("./src/payment-adapters");
 const {
   runPrivateFlow,
   runPrivatePayOnly,
+  preparePrivateClientFlow,
+  completePrivateClientFlow,
   runPublicFlow,
   accessPaidApi,
 } = require("./src/agent-demo");
@@ -34,6 +36,14 @@ attachPersistence(
 );
 const adapter = createPaymentAdapter(state);
 const publicDir = path.join(__dirname, "public");
+const web3BundlePath = path.join(
+  __dirname,
+  "node_modules",
+  "@solana",
+  "web3.js",
+  "lib",
+  "index.iife.min.js"
+);
 const adminToken = process.env.WHISPER_ADMIN_TOKEN || "";
 
 function sendJson(res, statusCode, payload, extraHeaders = {}) {
@@ -83,7 +93,18 @@ function classifyError(error) {
   }
 
   if (
+    message.includes("Missing signed transaction") ||
+    message.includes("Signed transaction does not match prepared builder") ||
+    message.includes("expired before client-signed completion") ||
+    message.includes("not prepared for client signing") ||
+    message.includes("Unknown paid endpoint session")
+  ) {
+    return { statusCode: 400, error: "BAD_REQUEST", message };
+  }
+
+  if (
     message.includes("integration is not ready") ||
+    message.includes("Client-signed MagicBlock integration is not ready") ||
     message.includes("Invalid secret key format") ||
     message.includes("Unsupported secret key format")
   ) {
@@ -224,6 +245,8 @@ const server = http.createServer(async (req, res) => {
         schemes: ["exact"],
         settlementMode: "server-mediated MagicBlock private receipt",
         payEndpoint: "/api/x402/pay",
+        walletPrepareEndpoint: "/api/x402/pay/prepare",
+        walletCompleteEndpoint: "/api/x402/pay/complete",
         networks: [
           process.env.MAGICBLOCK_CLUSTER === "mainnet" ? "solana-mainnet" : "solana-devnet",
         ],
@@ -232,6 +255,12 @@ const server = http.createServer(async (req, res) => {
           response: ["X-Payment-Response"],
         },
       });
+      return;
+    }
+
+    if (req.method === "GET" && pathname === "/vendor/solana-web3.iife.min.js") {
+      const buffer = fs.readFileSync(web3BundlePath);
+      sendText(res, 200, buffer, "application/javascript; charset=utf-8");
       return;
     }
 
@@ -307,6 +336,74 @@ const server = http.createServer(async (req, res) => {
             success: true,
             receiptToken: result.receipt.token,
             endpoint,
+          }),
+        }
+      );
+      return;
+    }
+
+    if (req.method === "POST" && pathname === "/api/x402/pay/prepare") {
+      const body = await readBody(req);
+      const xPayment = decodeXPayment(req.headers["x-payment"]);
+      const endpoint =
+        body.endpoint ||
+        xPayment?.endpoint ||
+        xPayment?.payload?.endpoint ||
+        xPayment?.paymentRequired?.endpoint ||
+        "/api/live/price?asset=solana&vs=usd";
+      const buyerPublicKey =
+        body.buyerPublicKey ||
+        xPayment?.buyerPublicKey ||
+        xPayment?.payload?.buyerPublicKey ||
+        xPayment?.payer ||
+        null;
+
+      if (!buyerPublicKey) {
+        sendJson(res, 400, {
+          error: "BAD_REQUEST",
+          message: "buyerPublicKey is required for /api/x402/pay/prepare.",
+        });
+        return;
+      }
+
+      const result = await preparePrivateClientFlow(state, adapter, endpoint, buyerPublicKey);
+      sendJson(
+        res,
+        200,
+        {
+          ok: true,
+          ...result,
+        },
+        {
+          "X-Whisper-Payment-Protocol": "x402-compatible",
+        }
+      );
+      return;
+    }
+
+    if (req.method === "POST" && pathname === "/api/x402/pay/complete") {
+      const body = await readBody(req);
+      const result = await completePrivateClientFlow(
+        state,
+        adapter,
+        body.sessionId,
+        body.signedSteps || []
+      );
+      sendJson(
+        res,
+        200,
+        {
+          ok: true,
+          ...result,
+        },
+        {
+          "X-Whisper-Payment-Protocol": "x402-compatible",
+          "X-Payment-Response": encodeXPaymentResponse({
+            x402Version: 1,
+            scheme: "receipt-retry",
+            success: true,
+            receiptToken: result.receipt.token,
+            endpoint: result.session.endpoint,
           }),
         }
       );

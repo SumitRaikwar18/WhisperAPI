@@ -10,6 +10,11 @@
 
 WhisperAPI lets AI agents pay for APIs and machine services on Solana without exposing provider choice, spend, or payment cadence on public rails. It uses MagicBlock Private Payments as the actual payment rail and wraps the flow in an x402-compatible `402 -> pay -> retry` pattern.
 
+The repo now supports both:
+
+- a judge-friendly server-signed demo path
+- a buyer-signed wallet path where the buyer key never leaves the client
+
 ## :sparkles: Why This Exists
 
 Public machine payments leak too much:
@@ -95,6 +100,7 @@ The dashboard includes a dedicated judge pass at `http://localhost:3000/dashboar
 - `Run judge demo` selects the strongest endpoint and executes the full private path
 - the checklist confirms `health`, `readiness`, and `deposit -> private-transfer -> withdraw`
 - `Copy proof summary` exports the receipt token and live transaction signatures for narration or submission notes
+- `Run client-signed flow` uses a connected Solana wallet to sign the buyer-side payment steps locally
 
 If `WHISPER_ADMIN_TOKEN` is set on a shared deployment, the dashboard now degrades cleanly and tells the reviewer why trace panels are protected instead of failing silently.
 
@@ -130,10 +136,13 @@ Routes:
 - `GET /api/state`
 - `POST /api/reset`
 - `POST /api/x402/pay`
+- `POST /api/x402/pay/prepare`
+- `POST /api/x402/pay/complete`
 - `POST /api/demo/public`
 - `POST /api/demo/private`
 - `GET /api/live/weather`
 - `GET /api/live/price`
+- `GET /vendor/solana-web3.iife.min.js`
 
 x402-compatible headers:
 
@@ -145,6 +154,13 @@ Real x402-compatible path:
 1. `GET /api/live/...` -> `402 Payment Required`
 2. `POST /api/x402/pay` -> fresh single-use `receiptToken`
 3. `GET /api/live/...` with `X-Payment-Receipt` -> `200 OK`
+
+No-custody wallet path:
+
+1. `POST /api/x402/pay/prepare` -> unsigned buyer transactions
+2. buyer wallet signs locally
+3. `POST /api/x402/pay/complete` -> WhisperAPI submits the signed payment steps and mints a receipt
+4. `GET /api/live/...` with `X-Payment-Receipt` -> `200 OK`
 
 Judge/demo shortcut:
 
